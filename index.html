@@ -6,6 +6,7 @@
     <title>Flow</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/safe.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -27,9 +28,12 @@
 <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col pb-24 bg-white shadow-2xl">
     <header class="p-5 bg-white border-b sticky top-0 z-20">
         <div class="flex justify-between items-end mb-4">
-            <div>
-                <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Môj Flow</span>
-                <div id="display-balance" class="text-3xl font-bold tracking-tighter text-slate-900">0,00 €</div>
+            <div class="flex items-center gap-3">
+                <img src="https://img.icons8.com/fluency/48/safe.png" class="w-10 h-10" alt="Flow Icon">
+                <div>
+                    <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Môj Flow</span>
+                    <div id="display-balance" class="text-3xl font-bold tracking-tighter text-slate-900">0,00 €</div>
+                </div>
             </div>
             <div id="sync-status" onclick="processSyncQueue()" class="flex items-center gap-1 bg-slate-100 px-3 py-1.5 rounded-full cursor-pointer">
                 <div id="sync-dot" class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
@@ -85,13 +89,10 @@
 <div id="settings-screen" class="fixed inset-0 bg-white z-50 hidden p-6 max-w-md mx-auto overflow-y-auto pb-24">
     <div id="settings-home">
         <div class="flex items-center gap-4 mb-6"><button onclick="showScreen('home')" class="p-2 bg-slate-100 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 class="text-xl font-bold">Nastavenia</h2></div>
-        <button onclick="fullCloudPull()" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase mb-6 shadow-lg">Aktualizovať z cloudu</button>
-        <div class="bg-slate-50 p-4 rounded-2xl mb-4 border"><input type="text" id="new-cat-name" placeholder="Názov kategórie" class="w-full p-3 rounded-xl border mb-2 text-sm outline-none"><button onclick="addCategory()" class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-[10px]">PRIDAŤ HLAVNÚ KAT.</button></div>
         <div id="manage-cats-list" class="space-y-2"></div>
     </div>
     <div id="sub-editor" class="hidden">
         <div class="flex items-center gap-4 mb-6"><button onclick="closeSubEditor()" class="p-2 bg-slate-100 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 id="sub-editor-title" class="text-xl font-bold"></h2></div>
-        <div class="bg-slate-100 p-4 rounded-2xl mb-4"><input type="text" id="new-sub-name" placeholder="Názov podkategórie" class="w-full p-3 rounded-xl border mb-2 text-sm outline-none"><button onclick="addSubCategory()" class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-[10px]">PRIDAŤ PODKAT.</button></div>
         <div id="manage-subs-list" class="space-y-2"></div>
     </div>
 </div>
@@ -101,9 +102,16 @@
     
     let db = JSON.parse(localStorage.getItem('f_db_v18')) || [];
     let syncQueue = JSON.parse(localStorage.getItem('f_sync_q_v18')) || [];
+    
+    // VRÁTENÉ VŠETKY PÔVODNÉ KATEGÓRIE
     let categories = JSON.parse(localStorage.getItem('f_cats_v18')) || [
-        { id: 'Domácnosť', icon: 'home', subs: [] },
-        { id: 'Strava', icon: 'utensils', subs: ['Potraviny', 'Obed'] },
+        { id: 'Potraviny', icon: 'shopping-cart', subs: ['Lidl', 'Kaufland', 'Tesco', 'Iné'] },
+        { id: 'Strava', icon: 'utensils', subs: ['Obed', 'Restauracia', 'Fastfood'] },
+        { id: 'Domácnosť', icon: 'home', subs: ['Nájom', 'Energie', 'Drogéria', 'Opravy'] },
+        { id: 'Doprava', icon: 'car', subs: ['Benzín', 'MHD', 'Servis', 'Parkovné'] },
+        { id: 'Voľný čas', icon: 'smile', subs: ['Kino', 'Knihy', 'Hobby', 'Káva'] },
+        { id: 'Zdravie', icon: 'heart', subs: ['Lekáreň', 'Lekár', 'Doplnky'] },
+        { id: 'Osobné', icon: 'user', subs: ['Oblečenie', 'Kozmetika', 'Kaderník'] },
         { id: 'Iné', icon: 'layers', subs: [] }
     ];
     
@@ -149,7 +157,6 @@
         const clearBtn = document.getElementById('clear-cat-filter');
         let data = [...db].sort((a,b) => new Date(b.date) - new Date(a.date));
         
-        // Sumy pre hlavičku
         const summaryData = filter === 'unprocessed' ? data.filter(d => !d.processed) : data;
         const sums = {};
         summaryData.forEach(item => { if (item.type === 'expense') sums[item.category] = (sums[item.category] || 0) + item.amount; });
@@ -258,32 +265,23 @@
         lucide.createIcons();
     }
 
-    function addCategory() {
-        const n = document.getElementById('new-cat-name').value.trim();
-        if(!n) return; categories.push({id: n, icon: 'layers', subs: []});
-        document.getElementById('new-cat-name').value = ''; saveData(); renderManageCats();
-    }
-
-    function addSubCategory() {
-        const n = document.getElementById('new-sub-name').value.trim();
-        if(!n) return; categories[editingCatIdx].subs.push(n);
-        document.getElementById('new-sub-name').value = ''; saveData(); renderManageSubs();
-    }
-
     function deleteCat(i) { if(confirm('Zmazať?')) { categories.splice(i,1); saveData(); renderManageCats(); } }
     function deleteSub(i) { categories[editingCatIdx].subs.splice(i,1); saveData(); renderManageSubs(); }
     function closeSubEditor() { document.getElementById('settings-home').classList.remove('hidden'); document.getElementById('sub-editor').classList.add('hidden'); }
     function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
     function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s === 'settings') renderManageCats(); else renderList(); }
+    
     function saveData() {
         localStorage.setItem('f_db_v18', JSON.stringify(db));
         localStorage.setItem('f_cats_v18', JSON.stringify(categories));
         localStorage.setItem('f_sync_q_v18', JSON.stringify(syncQueue));
     }
+    
     function updateTotals() {
         const bal = db.reduce((s,x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0);
         document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €';
     }
+    
     function updateSyncUI(status) {
         const dot = document.getElementById('sync-dot');
         if (status === 'syncing') dot.className = "w-2.5 h-2.5 bg-blue-500 animate-pulse rounded-full";
@@ -291,6 +289,7 @@
         else dot.className = "w-2.5 h-2.5 bg-green-500 rounded-full";
         document.getElementById('sync-text').innerText = (status === 'syncing') ? "..." : (syncQueue.length || "OK");
     }
+
     function handleDelete() {
         const id = document.getElementById('entry-id').value;
         if(confirm('Zmazať?')) {
