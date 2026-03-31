@@ -1,72 +1,48 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
+<link rel="icon" type="image/png" href="https://img.icons8.com/fluency/48/safe.png">
+<link rel="manifest" href="manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Flow V20 Online</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/48/safe.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/safe.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        
-        :root {
-            --bg-main: #f8fafc;
-            --bg-card: #ffffff;
-            --text-main: #0f172a;
-            --text-dim: #64748b;
-            --border: #f1f5f9;
-            --accent: #2563eb;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-main: #020617; /* Hlbšia čierna pre lepší kontrast */
-                --bg-card: #0f172a; /* Tmavomodrá pre karty */
-                --text-main: #f8fafc;
-                --text-dim: #94a3b8;
-                --border: #1e293b;
-                --accent: #3b82f6;
-            }
-        }
-
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg-main); color: var(--text-main); -webkit-tap-highlight-color: transparent; transition: background 0.3s; }
-        .app-container { background-color: var(--bg-card); color: var(--text-main); }
-        .processed { opacity: 0.3; filter: grayscale(1); }
-        
-        /* Lepší vizuál kariet v tmavom režime */
-        .cat-tile { transition: all 0.2s; border: 2px solid var(--border); cursor: pointer; min-height: 75px; background: var(--bg-card); color: var(--text-dim); }
-        .cat-tile.selected { border-color: var(--accent); background-color: rgba(37, 99, 235, 0.1); color: var(--accent); }
-        
-        .sub-chip { transition: all 0.2s; cursor: pointer; border: 2px solid var(--border); background: var(--bg-card); color: var(--text-dim); }
-        .sub-chip.active { background-color: var(--accent); color: white; border-color: var(--accent); }
-        
-        .glass-nav { background: var(--bg-card); border-top: 1px solid var(--border); }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        .processed { opacity: 0.2; filter: grayscale(1); }
+        .cat-tile { transition: all 0.2s; border: 2px solid #f1f5f9; cursor: pointer; min-height: 75px; }
+        .cat-tile.selected { border-color: #2563eb; background-color: #eff6ff; color: #1d4ed8; }
+        .sub-chip { transition: all 0.2s; cursor: pointer; border: 2px solid #f1f5f9; }
+        .sub-chip.active { background-color: #2563eb; color: white; border-color: #2563eb; }
+        .glass-nav { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-top: 1px solid #e2e8f0; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        .summary-card { transition: all 0.3s; border: 2px solid var(--border); min-width: 95px; background: var(--bg-card); }
-        .summary-card.active-filter { border-color: var(--accent); background-color: rgba(37, 99, 235, 0.1); transform: scale(1.05); }
-        
-        input, select, textarea { background: var(--bg-main) !important; color: var(--text-main) !important; border: 1px solid var(--border) !important; }
-        .transaction-item { background: var(--bg-card); border: 1px solid var(--border); }
+        .summary-card { transition: all 0.3s; border: 2px solid transparent; min-width: 95px; }
+        .summary-card.active-filter { border-color: #2563eb; background-color: #eff6ff; transform: scale(1.05); }
     </style>
 </head>
 <body>
 
-<div id="app" class="max-w-md mx-auto min-h-screen flex flex-col pb-24 app-container shadow-2xl">
-    <header class="p-5 border-b sticky top-0 z-20 app-container">
+<div id="app" class="max-w-md mx-auto min-h-screen flex flex-col pb-24 bg-white shadow-2xl">
+    <header class="p-5 bg-white border-b sticky top-0 z-20">
         <div class="flex justify-between items-end mb-4">
             <div class="flex items-center gap-3">
                 <img src="https://img.icons8.com/fluency/48/safe.png" class="w-10 h-10" alt="Flow Icon">
                 <div>
                     <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Môj Flow</span>
-                    <div id="display-balance" class="text-3xl font-bold tracking-tighter">0,00 €</div>
+                    <div id="display-balance" class="text-3xl font-bold tracking-tighter text-slate-900">0,00 €</div>
                 </div>
             </div>
-            <div id="sync-status" onclick="manualSync()" class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full cursor-pointer">
+            <div id="sync-status" onclick="manualSync()" class="flex items-center gap-1 bg-slate-100 px-3 py-1.5 rounded-full cursor-pointer">
                 <div id="sync-dot" class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
                 <span id="sync-text" class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">OK</span>
             </div>
@@ -77,11 +53,11 @@
     <main class="p-4 flex-1">
         <div class="flex flex-col gap-3 mb-4">
             <div class="flex gap-2">
-                <select id="filter-month" onchange="renderList()" class="flex-1 text-xs font-bold p-2 rounded-xl outline-none"></select>
-                <select id="filter-year" onchange="renderList()" class="w-24 text-xs font-bold p-2 rounded-xl outline-none"></select>
+                <select id="filter-month" onchange="renderList()" class="flex-1 text-xs font-bold bg-slate-100 p-2 rounded-xl outline-none"></select>
+                <select id="filter-year" onchange="renderList()" class="w-24 text-xs font-bold bg-slate-100 p-2 rounded-xl outline-none"></select>
             </div>
-            <div class="flex items-center justify-between px-1">
-                <select id="ui-filter" onchange="renderList()" class="text-[10px] font-black uppercase bg-transparent outline-none border-none !p-0">
+            <div class="flex items-center justify-between">
+                <select id="ui-filter" onchange="renderList()" class="text-[10px] font-black uppercase text-slate-400 bg-transparent outline-none">
                     <option value="unprocessed">Neprepísané</option>
                     <option value="all">Všetky</option>
                 </select>
@@ -93,91 +69,188 @@
 
     <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-nav flex justify-around items-center h-16 z-30">
         <button onclick="showScreen('home')" class="text-blue-600 p-4"><i data-lucide="layout-grid"></i></button>
-        <button onclick="openModal()" class="bg-blue-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl -mt-10 border-4 border-white dark:border-slate-900 active:scale-95"><i data-lucide="plus" class="w-8 h-8"></i></button>
+        <button onclick="openModal()" class="bg-blue-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl -mt-10 border-4 border-white active:scale-95"><i data-lucide="plus" class="w-8 h-8"></i></button>
         <button onclick="showScreen('settings')" class="text-slate-400 p-4"><i data-lucide="settings"></i></button>
     </nav>
 </div>
 
-<div id="modal-overlay" class="fixed inset-0 bg-slate-900/70 z-[40] hidden backdrop-blur-sm flex items-end">
-    <div class="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-[2.5rem] p-6 shadow-2xl max-h-[95vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-6 sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10">
+<div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 z-[40] hidden backdrop-blur-sm flex items-end">
+    <div class="bg-white w-full max-w-md mx-auto rounded-t-[2.5rem] p-6 shadow-2xl max-h-[95vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-6 sticky top-0 bg-white pb-2 z-10">
             <button onclick="closeModal()" class="text-slate-400 font-bold text-sm">Zrušiť</button>
             <button onclick="document.getElementById('save-trigger').click()" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-md">ULOŽIŤ</button>
         </div>
         <form id="entry-form" onsubmit="handleSave(event)" class="space-y-5">
             <input type="submit" id="save-trigger" class="hidden">
             <input type="hidden" id="entry-id">
-            
-            <div class="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                <button type="button" onclick="setUser('Lukáš')" id="u-Lukáš" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">LUKÁŠ</button>
-                <button type="button" onclick="setUser('Zdenka')" id="u-Zdenka" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">ZDENKA</button>
+            <input type="number" id="f-amount" step="0.01" placeholder="0.00" class="w-full text-center text-5xl font-bold py-2 outline-none" required>
+            <div class="flex bg-slate-100 p-1 rounded-xl">
+                <button type="button" id="t-ex" onclick="setType('expense')" class="flex-1 py-2 rounded-lg text-[10px] font-black bg-white text-red-600 shadow-sm">VÝDAVOK</button>
+                <button type="button" id="t-in" onclick="setType('income')" class="flex-1 py-2 rounded-lg text-[10px] font-black text-slate-400">PRÍJEM</button>
             </div>
-
-            <input type="number" id="f-amount" inputmode="decimal" step="0.01" placeholder="0.00" class="w-full text-center text-5xl font-bold py-2 outline-none border-none bg-transparent !p-0" required>
-            
-            <div class="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                <button type="button" id="t-ex" onclick="setType('expense')" class="flex-1 py-2 rounded-lg text-[10px] font-black shadow-sm">VÝDAVOK</button>
-                <button type="button" id="t-in" onclick="setType('income')" class="flex-1 py-2 rounded-lg text-[10px] font-black">PRÍJEM</button>
-            </div>
-
-            <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2 px-1">Kategória</label><div id="cat-grid" class="grid grid-cols-3 gap-2"></div></div>
-            <div id="sub-section" class="hidden"><label class="text-[10px] font-black text-slate-400 uppercase block mb-2 px-1">Podkategória</label><div id="sub-grid" class="flex flex-wrap gap-2"></div></div>
-            
-            <input type="text" id="f-note" placeholder="Poznámka..." class="w-full p-4 rounded-2xl text-sm outline-none">
-            <input type="date" id="f-date" class="p-4 rounded-2xl text-sm outline-none w-full">
-            
-            <button type="button" id="del-btn" onclick="handleDelete()" class="w-full text-red-500 text-[10px] font-black uppercase pt-4 hidden">Zmazať záznam</button>
+            <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Kategória</label><div id="cat-grid" class="grid grid-cols-3 gap-2"></div></div>
+            <div id="sub-section" class="hidden"><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Podkategória</label><div id="sub-grid" class="flex flex-wrap gap-2"></div></div>
+            <input type="text" id="f-note" placeholder="Poznámka..." class="w-full bg-slate-50 p-4 rounded-2xl text-sm outline-none">
+            <input type="date" id="f-date" class="bg-slate-50 p-3 rounded-xl text-xs outline-none w-full">
+            <button type="button" id="del-btn" onclick="handleDelete()" class="w-full text-red-400 text-[10px] font-black uppercase pt-4 hidden">Zmazať záznam</button>
         </form>
     </div>
 </div>
 
-<div id="settings-screen" class="fixed inset-0 bg-white dark:bg-slate-900 z-50 hidden p-6 max-w-md mx-auto overflow-y-auto pb-24">
+<div id="settings-screen" class="fixed inset-0 bg-white z-50 hidden p-6 max-w-md mx-auto overflow-y-auto pb-24">
     <div id="settings-home">
-        <div class="flex items-center gap-4 mb-6"><button onclick="showScreen('home')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 class="text-xl font-bold">Nastavenia</h2></div>
+        <div class="flex items-center gap-4 mb-6"><button onclick="showScreen('home')" class="p-2 bg-slate-100 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 class="text-xl font-bold">Nastavenia</h2></div>
+        
         <div class="flex gap-2 mb-6">
             <button onclick="fullCloudPull(true)" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-[10px] uppercase shadow-md">Stiahnuť Transakcie</button>
             <button onclick="syncCategories('pull')" class="flex-1 py-3 bg-slate-800 text-white rounded-xl font-bold text-[10px] uppercase shadow-md">Stiahnuť Kategórie</button>
         </div>
+
+        <div class="bg-slate-50 p-4 rounded-2xl mb-4 border">
+            <label class="text-[10px] font-black text-slate-400 uppercase mb-2 block">Nová kategória</label>
+            <input type="text" id="new-cat-name" placeholder="Názov..." class="w-full p-3 rounded-xl border mb-2 text-sm outline-none">
+            <button onclick="addCategory()" class="w-full py-3 bg-blue-500 text-white rounded-xl font-bold text-[10px] uppercase">Pridať hlavnú kategóriu</button>
+        </div>
+        
         <div id="manage-cats-list" class="space-y-2 mb-8"></div>
+
         <button onclick="hardResetCategories()" class="w-full py-4 border-2 border-dashed border-red-100 text-red-400 rounded-2xl text-[10px] font-black uppercase">Vynútiť 12 pôvodných kategórií</button>
+    </div>
+
+    <div id="sub-editor" class="hidden">
+        <div class="flex items-center gap-4 mb-6"><button onclick="closeSubEditor()" class="p-2 bg-slate-100 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 id="sub-editor-title" class="text-xl font-bold"></h2></div>
+        <div id="manage-subs-list" class="space-y-2 mb-4"></div>
+        <div class="bg-slate-50 p-4 rounded-2xl border">
+            <input type="text" id="new-sub-name" placeholder="Názov podkategórie..." class="w-full p-3 rounded-xl border mb-2 text-sm outline-none">
+            <button onclick="addSubCategory()" class="w-full py-3 bg-blue-500 text-white rounded-xl font-bold text-[10px] uppercase">Pridať podkategóriu</button>
+        </div>
     </div>
 </div>
 
 <script>
-    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
-
     const GOOGLE_URL = 'https://script.google.com/macros/s/AKfycbyr4_z3J4_Bsv6tqlUOs4kHgMSy61urNPzWd2fvOEqvjuC-vMlKnDuto9RXVxH-l4hDLw/exec';
     
     const defaultCategories = [
-        { id: 'Domácnosť', icon: 'home', subs: [] }, { id: 'Doprava', icon: 'car', subs: [] }, { id: 'Poistenie', icon: 'shield-check', subs: [] },
-        { id: 'Strava', icon: 'utensils', subs: [] }, { id: 'Deti', icon: 'baby', subs: [] }, { id: 'Domáce zvieratá', icon: 'dog', subs: [] },
-        { id: 'Osobná starostlivosť', icon: 'heart', subs: [] }, { id: 'Zábava/Dovolenky', icon: 'palmtree', subs: [] },
-        { id: 'Dane', icon: 'landmark', subs: [] }, { id: 'Darčeky', icon: 'gift', subs: [] }, { id: 'Iné', icon: 'layers', subs: [] },
+        { id: 'Domácnosť', icon: 'home', subs: [] },
+        { id: 'Doprava', icon: 'car', subs: [] },
+        { id: 'Poistenie', icon: 'shield-check', subs: [] },
+        { id: 'Strava', icon: 'utensils', subs: [] },
+        { id: 'Deti', icon: 'baby', subs: [] },
+        { id: 'Domáce zvieratá', icon: 'dog', subs: [] },
+        { id: 'Osobná starostlivosť', icon: 'heart', subs: [] },
+        { id: 'Zábava/Dovolenky', icon: 'palmtree', subs: [] },
+        { id: 'Dane', icon: 'landmark', subs: [] },
+        { id: 'Darčeky', icon: 'gift', subs: [] },
+        { id: 'Iné', icon: 'layers', subs: [] },
         { id: 'Úspory alebo investície', icon: 'trending-up', subs: [] }
     ];
 
     let db = JSON.parse(localStorage.getItem('f_db_v20')) || [];
     let syncQueue = JSON.parse(localStorage.getItem('f_sync_q_v20')) || [];
     let categories = JSON.parse(localStorage.getItem('f_cats_v20')) || defaultCategories;
-    
-    // Načítanie posledného autora z pamäte
-    let curUser = localStorage.getItem('f_last_user') || 'Lukáš';
-    let curType = 'expense', selectedCat = '', selectedSub = '', activeCategoryFilter = null, isSyncing = false;
 
+    let curType = 'expense', selectedCat = '', selectedSub = '', activeCategoryFilter = null, isSyncing = false, editingCatIdx = null;
+
+    // --- AUTOMATICKÁ SYNCHRONIZÁCIA TRANSAKCIÍ ---
     async function fullCloudPull(manual = false) {
-        if(manual && !confirm("Stiahnuť dáta z cloudu?")) return;
+        if(manual && !confirm("Stiahnuť všetky transakcie?")) return;
         updateSyncUI('syncing');
         try {
             const res = await fetch(GOOGLE_URL);
             const data = await res.json();
             if(Array.isArray(data)) {
-                db = data.filter(x => x.id && String(x.id).startsWith('ID-')).map(item => ({ 
-                    ...item, date: item.date ? String(item.date).split('T')[0] : '', amount: parseFloat(item.amount), processed: item.processed === "ÁNO" 
-                }));
-                saveData(false); renderList();
+                db = data.filter(x => x.id && String(x.id).startsWith('ID-'))
+                         .map(item => ({ 
+                             ...item, 
+                             // OPRAVA DÁTUMU: Odstránenie času (T00:00...)
+                             date: item.date ? String(item.date).split('T')[0] : '',
+                             amount: parseFloat(item.amount), 
+                             processed: item.processed === "ÁNO" 
+                         }));
+                saveData(false); 
+                renderList(); 
+                if(manual) alert("Dáta boli aktualizované!");
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Pull error", e); }
         updateSyncUI('ok');
+    }
+
+    async function syncCategories(action = 'push') {
+        updateSyncUI('syncing');
+        if (action === 'push') {
+            try {
+                await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'sync_categories', categories: categories }) });
+            } catch (e) { }
+        } else {
+            try {
+                const res = await fetch(GOOGLE_URL + "?get=categories");
+                const cloudData = await res.json();
+                if(Array.isArray(cloudData) && cloudData.length > 0 && cloudData[0].id) {
+                    categories = cloudData;
+                    localStorage.setItem('f_cats_v20', JSON.stringify(categories));
+                    renderCatGrid();
+                    if(!document.getElementById('settings-screen').classList.contains('hidden')) renderManageCats();
+                } else {
+                    syncCategories('push');
+                }
+            } catch (e) { }
+        }
+        updateSyncUI('ok');
+    }
+
+    // --- ZVYŠOK LOGIKY ---
+    function hardResetCategories() {
+        if(confirm("Vrátiť 12 pôvodných kategórií?")) {
+            categories = JSON.parse(JSON.stringify(defaultCategories));
+            saveData(true); renderCatGrid();
+            if(!document.getElementById('settings-screen').classList.contains('hidden')) renderManageCats();
+        }
+    }
+
+    function renderCatGrid() {
+        document.getElementById('cat-grid').innerHTML = categories.map(c => `
+            <button type="button" onclick="selectCat('${c.id}')" data-id="${c.id}" class="cat-tile flex flex-col items-center justify-center p-1 rounded-2xl text-[8px] font-black uppercase text-slate-500 bg-white shadow-sm border-2 border-slate-50">
+                <i data-lucide="${c.icon || 'layers'}" class="w-4 h-4 mb-1 text-slate-400"></i>${c.id}
+            </button>`).join('');
+        lucide.createIcons();
+    }
+
+    function renderManageCats() {
+        document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `
+            <div class="p-3 bg-white rounded-2xl border flex items-center justify-between shadow-sm">
+                <div class="flex-1 cursor-pointer" onclick="openSubEditor(${i})">
+                    <div class="font-bold text-sm">${c.id}</div>
+                    <div class="text-[9px] text-slate-400 font-bold uppercase">${c.subs.length} podkategórií</div>
+                </div>
+                <div class="flex gap-1">
+                    <button onclick="moveCat(${i}, -1)" class="p-2 text-slate-400"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>
+                    <button onclick="moveCat(${i}, 1)" class="p-2 text-slate-400"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
+                    <button onclick="deleteCat(${i})" class="p-2 text-red-200"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>
+            </div>`).join('');
+        lucide.createIcons();
+    }
+
+    function handleSave(e) {
+        e.preventDefault();
+        let id = document.getElementById('entry-id').value || 'ID-' + Date.now();
+        const entry = { id, date: document.getElementById('f-date').value, category: selectedCat, sub: selectedSub, amount: parseFloat(document.getElementById('f-amount').value), type: curType, note: document.getElementById('f-note').value, processed: false, action: 'save' };
+        const idx = db.findIndex(x => String(x.id) === String(id));
+        if (idx > -1) { entry.processed = db[idx].processed; db[idx] = entry; } else { db.push(entry); }
+        syncQueue = syncQueue.filter(x => String(x.id) !== String(id)); syncQueue.push(entry);
+        saveData(false); closeModal(); renderList(); processSyncQueue();
+    }
+
+    async function processSyncQueue() {
+        if (syncQueue.length === 0 || isSyncing) return;
+        isSyncing = true; updateSyncUI('syncing');
+        while (syncQueue.length > 0) {
+            try {
+                await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(syncQueue[0]) });
+                syncQueue.shift(); saveData(false);
+            } catch (e) { break; }
+        }
+        isSyncing = false; updateSyncUI('ok');
     }
 
     function renderList() {
@@ -185,30 +258,20 @@
         const selMonth = parseInt(document.getElementById('filter-month').value);
         const selYear = parseInt(document.getElementById('filter-year').value);
         const filterStatus = document.getElementById('ui-filter').value;
-        
         let filtered = db.filter(d => { const dt = new Date(d.date); return dt.getMonth() === selMonth && dt.getFullYear() === selYear; });
-
-        let summaryData = filtered;
-        if(filterStatus === 'unprocessed') summaryData = summaryData.filter(d => !d.processed);
-        
         const sums = {};
-        summaryData.forEach(item => { if (item.type === 'expense') sums[item.category] = (sums[item.category] || 0) + item.amount; });
+        filtered.forEach(item => { if (item.type === 'expense') sums[item.category] = (sums[item.category] || 0) + item.amount; });
         renderSummary(sums);
-
         if(filterStatus === 'unprocessed') filtered = filtered.filter(d => !d.processed);
         if(activeCategoryFilter) filtered = filtered.filter(d => d.category === activeCategoryFilter);
-
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
         list.innerHTML = filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(item => `
-            <div class="transaction-item p-3 rounded-2xl flex items-center justify-between ${item.processed ? 'processed' : 'shadow-sm'}">
+            <div class="bg-white p-3 rounded-2xl flex items-center justify-between border-2 ${item.processed ? 'processed border-transparent' : 'border-slate-50 shadow-sm'}">
                 <div class="flex-1" onclick="openModal('${item.id}')">
-                    <div class="flex justify-between items-center pr-4">
-                        <span class="font-bold text-sm">${item.category}${item.sub ? ' • '+item.sub : ''}</span>
-                        <span class="font-bold ${item.type === 'income' ? 'text-green-500' : ''}">${item.amount.toFixed(2)}€</span>
-                    </div>
-                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-tight">${item.date} | ${item.user || 'Lukáš'} ${item.note ? '| '+item.note : ''}</div>
+                    <div class="flex justify-between items-center pr-4"><span class="font-bold text-sm text-slate-800">${item.category}${item.sub ? ' • '+item.sub : ''}</span><span class="font-bold ${item.type === 'income' ? 'text-green-600' : 'text-slate-900'}">${item.amount.toFixed(2)}€</span></div>
+                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-tight">${item.date} ${item.note ? '| '+item.note : ''}</div>
                 </div>
-                <button onclick="toggleProcessed('${item.id}')" class="w-10 h-10 rounded-xl flex items-center justify-center border-2 ${item.processed ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-100 dark:border-slate-800 text-slate-200'}"><i data-lucide="check" class="w-5 h-5"></i></button>
+                <button onclick="toggleProcessed('${item.id}')" class="w-10 h-10 rounded-xl flex items-center justify-center border-2 ${item.processed ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-100 text-slate-200'}"><i data-lucide="check" class="w-5 h-5"></i></button>
             </div>`).join('');
         updateTotals(); lucide.createIcons();
     }
@@ -216,47 +279,39 @@
     function renderSummary(sums) {
         const container = document.getElementById('category-summary');
         container.innerHTML = Object.keys(sums).sort((a,b) => sums[b] - sums[a]).map(cat => `
-            <div onclick="toggleFilter('${cat}')" class="summary-card flex-shrink-0 px-3 py-2 rounded-xl cursor-pointer ${activeCategoryFilter === cat ? 'active-filter' : ''}">
+            <div onclick="toggleFilter('${cat}')" class="summary-card flex-shrink-0 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 cursor-pointer ${activeCategoryFilter === cat ? 'active-filter' : ''}">
                 <div class="text-[8px] font-black ${activeCategoryFilter === cat ? 'text-blue-600' : 'text-slate-400'} uppercase truncate">${cat}</div>
-                <div class="text-xs font-bold">${sums[cat].toFixed(2)}€</div>
+                <div class="text-xs font-bold text-slate-700">${sums[cat].toFixed(2)}€</div>
             </div>`).join('');
     }
 
-    function setUser(u) {
-        curUser = u;
-        localStorage.setItem('f_last_user', u); // Zapamätanie autora
-        ['Lukáš', 'Zdenka'].forEach(user => {
-            const btn = document.getElementById(`u-${user}`);
-            if(user === u) {
-                btn.className = 'flex-1 py-2 rounded-lg text-[10px] font-black bg-white dark:bg-slate-700 text-blue-600 shadow-sm';
-            } else {
-                btn.className = 'flex-1 py-2 rounded-lg text-[10px] font-black text-slate-400';
-            }
-        });
+    function toggleFilter(cat) { activeCategoryFilter = (activeCategoryFilter === cat) ? null : cat; renderList(); }
+    function resetCategoryFilter() { activeCategoryFilter = null; renderList(); }
+    function toggleProcessed(id) {
+        db = db.map(x => String(x.id) === String(id) ? {...x, processed: !x.processed} : x);
+        syncQueue.push({...db.find(x => String(x.id) === String(id)), action: 'save'});
+        saveData(false); renderList(); processSyncQueue();
     }
-
-    function setType(t) {
-        curType = t;
-        const exBtn = document.getElementById('t-ex');
-        const inBtn = document.getElementById('t-in');
-        if(t === 'expense') {
-            exBtn.className = 'flex-1 py-2 rounded-lg text-[10px] font-black bg-white dark:bg-slate-700 text-red-500 shadow-sm';
-            inBtn.className = 'flex-1 py-2 rounded-lg text-[10px] font-black text-slate-400';
-        } else {
-            inBtn.className = 'flex-1 py-2 rounded-lg text-[10px] font-black bg-white dark:bg-slate-700 text-green-500 shadow-sm';
-            exBtn.className = 'flex-1 py-2 rounded-lg text-[10px] font-black text-slate-400';
-        }
+    function initTimeFilters() {
+        const mSelect = document.getElementById('filter-month');
+        const ySelect = document.getElementById('filter-year');
+        const months = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+        const now = new Date();
+        mSelect.innerHTML = months.map((m, i) => `<option value="${i}" ${i === now.getMonth() ? 'selected' : ''}>${m}</option>`).join('');
+        const years = [...new Set([now.getFullYear(), ...db.map(x => new Date(x.date).getFullYear())])].sort((a,b) => b-a);
+        ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
     }
-
-    function handleSave(e) {
-        e.preventDefault();
-        let id = document.getElementById('entry-id').value || 'ID-' + Date.now();
-        const entry = { id, date: document.getElementById('f-date').value, category: selectedCat, sub: selectedSub, amount: parseFloat(document.getElementById('f-amount').value), type: curType, note: document.getElementById('f-note').value, user: curUser, processed: false, action: 'save' };
-        const idx = db.findIndex(x => String(x.id) === String(id));
-        if (idx > -1) { entry.processed = db[idx].processed; db[idx] = entry; } else { db.push(entry); }
-        syncQueue.push(entry); saveData(false); closeModal(); renderList(); processSyncQueue();
+    function selectCat(id) {
+        selectedCat = id; selectedSub = '';
+        document.querySelectorAll('.cat-tile').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
+        const cat = categories.find(c => c.id === id);
+        if(cat && cat.subs.length > 0) {
+            document.getElementById('sub-section').classList.remove('hidden');
+            document.getElementById('sub-grid').innerHTML = cat.subs.map(s => `<button type="button" onclick="selectSub('${s}')" data-sub="${s}" class="sub-chip px-3 py-1.5 rounded-xl text-[10px] font-black uppercase text-slate-500 bg-white">${s}</button>`).join('');
+        } else { document.getElementById('sub-section').classList.add('hidden'); }
     }
-
+    function selectSub(s) { selectedSub = s; document.querySelectorAll('.sub-chip').forEach(el => el.classList.toggle('active', el.dataset.sub === s)); }
+    function setType(t) { curType = t; document.getElementById('t-ex').className = t === 'expense' ? 'flex-1 py-2 rounded-lg text-[10px] font-black bg-white text-red-600 shadow-sm' : 'flex-1 py-2 rounded-lg text-[10px] font-black text-slate-400'; document.getElementById('t-in').className = t === 'income' ? 'flex-1 py-2 rounded-lg text-[10px] font-black bg-white text-green-600 shadow-sm' : 'flex-1 py-2 rounded-lg text-[10px] font-black text-slate-400'; }
     function openModal(id = null) {
         document.getElementById('modal-overlay').classList.remove('hidden');
         renderCatGrid();
@@ -266,44 +321,46 @@
             document.getElementById('f-amount').value = i.amount;
             document.getElementById('f-note').value = i.note;
             document.getElementById('f-date').value = i.date;
-            setUser(i.user || 'Lukáš'); setType(i.type); selectCat(i.category);
+            setType(i.type); selectCat(i.category);
             if(i.sub) setTimeout(() => selectSub(i.sub), 50);
             document.getElementById('del-btn').classList.remove('hidden');
         } else {
             document.getElementById('entry-form').reset();
             document.getElementById('f-date').valueAsDate = new Date();
-            // Použije sa zapamätaný autor
-            setUser(localStorage.getItem('f_last_user') || 'Lukáš'); 
             setType('expense'); selectCat(categories[0]?.id || '');
             document.getElementById('del-btn').classList.add('hidden');
         }
     }
-
-    // --- POMOCNÉ FUNKCIE ---
-    async function syncCategories(action = 'push') {
-        updateSyncUI('syncing');
-        if (action === 'push') { try { await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'sync_categories', categories: categories }) }); } catch (e) {} }
-        else { try { const res = await fetch(GOOGLE_URL + "?get=categories"); const cloudData = await res.json(); if(Array.isArray(cloudData) && cloudData.length > 0) { categories = cloudData; localStorage.setItem('f_cats_v20', JSON.stringify(categories)); renderCatGrid(); } } catch (e) {} }
-        updateSyncUI('ok');
-    }
-    async function processSyncQueue() { if (syncQueue.length === 0 || isSyncing) return; isSyncing = true; updateSyncUI('syncing'); while (syncQueue.length > 0) { try { await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(syncQueue[0]) }); syncQueue.shift(); saveData(false); } catch (e) { break; } } isSyncing = false; updateSyncUI('ok'); }
-    function toggleFilter(cat) { activeCategoryFilter = (activeCategoryFilter === cat) ? null : cat; renderList(); }
-    function resetCategoryFilter() { activeCategoryFilter = null; renderList(); }
-    function toggleProcessed(id) { db = db.map(x => String(x.id) === String(id) ? {...x, processed: !x.processed} : x); syncQueue.push({...db.find(x => String(x.id) === String(id)), action: 'save'}); saveData(false); renderList(); processSyncQueue(); }
-    function initTimeFilters() { const mSelect = document.getElementById('filter-month'), ySelect = document.getElementById('filter-year'), months = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'], now = new Date(); mSelect.innerHTML = months.map((m, i) => `<option value="${i}" ${i === now.getMonth() ? 'selected' : ''}>${m}</option>`).join(''); const years = [...new Set([now.getFullYear(), ...db.map(x => new Date(x.date).getFullYear())])].sort((a,b) => b-a); ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join(''); }
-    function selectCat(id) { selectedCat = id; selectedSub = ''; document.querySelectorAll('.cat-tile').forEach(el => el.classList.toggle('selected', el.dataset.id === id)); const cat = categories.find(c => c.id === id); if(cat && cat.subs.length > 0) { document.getElementById('sub-section').classList.remove('hidden'); document.getElementById('sub-grid').innerHTML = cat.subs.map(s => `<button type="button" onclick="selectSub('${s}')" data-sub="${s}" class="sub-chip px-3 py-1.5 rounded-xl text-[10px] font-black uppercase shadow-sm">${s}</button>`).join(''); } else { document.getElementById('sub-section').classList.add('hidden'); } }
-    function selectSub(s) { selectedSub = s; document.querySelectorAll('.sub-chip').forEach(el => el.classList.toggle('active', el.dataset.sub === s)); }
     function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
-    function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s !== 'settings') renderList(); }
-    function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
+    function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s === 'settings') renderManageCats(); else renderList(); }
+    function saveData(pushCats = true) {
+        localStorage.setItem('f_db_v20', JSON.stringify(db));
+        localStorage.setItem('f_cats_v20', JSON.stringify(categories));
+        localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue));
+        if(pushCats) syncCategories('push');
+    }
     function updateTotals() { const bal = db.reduce((s,x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; }
     function updateSyncUI(status) { const dot = document.getElementById('sync-dot'); dot.className = (status === 'syncing') ? "w-2.5 h-2.5 bg-blue-500 animate-pulse rounded-full" : "w-2.5 h-2.5 bg-green-500 rounded-full"; document.getElementById('sync-text').innerText = (status === 'syncing') ? "..." : (syncQueue.length || "OK"); }
-    function handleDelete() { const id = document.getElementById('entry-id').value; if(confirm('Zmazať tento záznam?')) { syncQueue.push({ id, action: 'delete' }); db = db.filter(x => String(x.id) !== String(id)); saveData(false); closeModal(); renderList(); processSyncQueue(); } }
+    function handleDelete() { const id = document.getElementById('entry-id').value; if(confirm('Zmazať?')) { syncQueue.push({ id, action: 'delete' }); db = db.filter(x => String(x.id) !== String(id)); saveData(false); closeModal(); renderList(); processSyncQueue(); } }
     function manualSync() { fullCloudPull(true); processSyncQueue(); }
-    function renderCatGrid() { document.getElementById('cat-grid').innerHTML = categories.map(c => `<button type="button" onclick="selectCat('${c.id}')" data-id="${c.id}" class="cat-tile flex flex-col items-center justify-center p-1 rounded-2xl text-[8px] font-black uppercase shadow-sm"><i data-lucide="${c.icon || 'layers'}" class="w-4 h-4 mb-1"></i>${c.id}</button>`).join(''); lucide.createIcons(); }
-    function hardResetCategories() { if(confirm("Naozaj resetovať kategórie?")) { categories = JSON.parse(JSON.stringify(defaultCategories)); saveData(true); renderCatGrid(); } }
+    function addCategory() { let n = document.getElementById('new-cat-name').value.trim(); if(n) { categories.push({id: n, icon: 'layers', subs: []}); document.getElementById('new-cat-name').value = ''; saveData(true); renderManageCats(); } }
+    function deleteCat(i) { if(confirm('Zmazať kategóriu?')) { categories.splice(i,1); saveData(true); renderManageCats(); } }
+    function openSubEditor(idx) { editingCatIdx = idx; document.getElementById('settings-home').classList.add('hidden'); document.getElementById('sub-editor').classList.remove('hidden'); document.getElementById('sub-editor-title').innerText = categories[idx].id; renderManageSubs(); }
+    function renderManageSubs() { document.getElementById('manage-subs-list').innerHTML = categories[editingCatIdx].subs.map((s, i) => `<div class="p-4 bg-white rounded-xl border flex items-center justify-between"><span class="font-bold text-sm">${s}</span><button onclick="deleteSub(${i})" class="text-red-300"><i data-lucide="x" class="w-5 h-5"></i></button></div>`).join(''); lucide.createIcons(); }
+    function addSubCategory() { let n = document.getElementById('new-sub-name').value.trim(); if(n) { categories[editingCatIdx].subs.push(n); document.getElementById('new-sub-name').value = ''; saveData(true); renderManageSubs(); } }
+    function deleteSub(i) { categories[editingCatIdx].subs.splice(i,1); saveData(true); renderManageSubs(); }
+    function closeSubEditor() { document.getElementById('settings-home').classList.remove('hidden'); document.getElementById('sub-editor').classList.add('hidden'); }
+    function moveCat(idx, dir) { let nIdx = idx + dir; if(nIdx >= 0 && nIdx < categories.length) { [categories[idx], categories[nIdx]] = [categories[nIdx], categories[idx]]; saveData(true); renderManageCats(); } }
 
-    window.onload = () => { initTimeFilters(); renderList(); renderCatGrid(); fullCloudPull(false); setTimeout(() => syncCategories('pull'), 1500); };
+    // --- ŠTART ---
+    window.onload = () => {
+        initTimeFilters();
+        renderList();
+        renderCatGrid();
+        // HLAVNÁ ZMENA: Automaticky stiahne dáta pri každom zapnutí
+        fullCloudPull(false); 
+        setTimeout(() => syncCategories('pull'), 1500);
+    };
 </script>
 </body>
 </html>
