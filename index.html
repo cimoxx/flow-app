@@ -11,7 +11,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        /* NOVÁ TYPOGRAFIA: Plus Jakarta Sans pre telo, Outfit pre nadpisy a sumy */
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         
         :root {
             --bg-main: #f8fafc;
@@ -19,8 +20,8 @@
             --text-main: #0f172a;
             --text-dim: #64748b;
             --border: #e2e8f0;
-            --accent: #10b981; /* Emerald Green */
-            --accent-soft: rgba(16, 185, 129, 0.1);
+            --accent: #10b981; 
+            --accent-soft: rgba(16, 185, 129, 0.08);
             --gold: #f59e0b;
         }
 
@@ -36,26 +37,48 @@
             }
         }
 
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg-main); color: var(--text-main); -webkit-tap-highlight-color: transparent; transition: background 0.3s; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-main); 
+            color: var(--text-main); 
+            -webkit-tap-highlight-color: transparent; 
+            transition: background 0.3s;
+            letter-spacing: -0.01em;
+        }
+
+        h2, .font-bold, #display-balance {
+            font-family: 'Outfit', sans-serif;
+        }
+        
         .app-container { background-color: var(--bg-card); color: var(--text-main); }
         .processed { opacity: 0.3; filter: grayscale(1); }
         
-        .cat-tile { transition: all 0.2s; border: 1px solid var(--border); cursor: pointer; height: 58px; background: var(--bg-card); color: var(--text-dim); }
+        .cat-tile { transition: all 0.2s; border: 1px solid var(--border); cursor: pointer; height: 58px; background: var(--bg-card); color: var(--text-dim); border-radius: 14px; }
         .cat-tile.selected { border-color: var(--accent); background-color: var(--accent-soft); color: var(--accent); border-width: 2px; }
         .cat-tile i { width: 14px; height: 14px; margin-bottom: 2px; }
-        .cat-tile span { font-size: 7px; line-height: 1; text-align: center; font-weight: 700; padding: 0 2px; }
+        .cat-tile span { font-size: 7.5px; line-height: 1; text-align: center; font-weight: 800; padding: 0 2px; text-transform: uppercase; letter-spacing: 0.02em; }
 
-        .sub-chip { transition: all 0.2s; cursor: pointer; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); font-size: 9px; }
-        .sub-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); font-weight: 800; }
+        .sub-chip { transition: all 0.2s; cursor: pointer; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); font-size: 9px; border-radius: 10px; font-weight: 700; }
+        .sub-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
         
         .glass-nav { background: var(--bg-card); border-top: 1px solid var(--border); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        .summary-card { transition: all 0.3s; border: 1px solid var(--border); min-width: 90px; background: var(--bg-card); }
+        .summary-card { transition: all 0.3s; border: 1px solid var(--border); min-width: 90px; background: var(--bg-card); border-radius: 14px; }
         .summary-card.active-filter { border-color: var(--gold); background-color: rgba(245, 158, 11, 0.1); transform: scale(1.03); }
         
-        input, select, textarea { background: var(--bg-main) !important; color: var(--text-main) !important; border: 1px solid var(--border) !important; border-radius: 12px !important; }
+        input, select, textarea { 
+            background: var(--bg-main) !important; 
+            color: var(--text-main) !important; 
+            border: 1px solid var(--border) !important; 
+            border-radius: 14px !important;
+            font-weight: 600;
+        }
+
         .transaction-item { background: var(--bg-card); border-bottom: 1px solid var(--border); }
+        
+        /* Špeciálna úprava pre sumu */
+        #display-balance { letter-spacing: -0.04em; }
     </style>
 </head>
 <body>
@@ -66,13 +89,13 @@
             <div class="flex items-center gap-3">
                 <img src="https://img.icons8.com/fluency/48/safe.png" class="w-9 h-9" alt="Flow Icon">
                 <div>
-                    <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Peňaženka</span>
-                    <div id="display-balance" class="text-2xl font-bold tracking-tighter">0,00 €</div>
+                    <span class="text-[9px] font-extrabold uppercase text-emerald-500 tracking-[0.15em]">Peňaženka</span>
+                    <div id="display-balance" class="text-3xl font-extrabold">0,00 €</div>
                 </div>
             </div>
-            <div id="sync-status" onclick="manualSync()" class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full cursor-pointer">
+            <div id="sync-status" onclick="manualSync()" class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full cursor-pointer">
                 <div id="sync-dot" class="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <span id="sync-text" class="text-[9px] font-black text-slate-500 uppercase">OK</span>
+                <span id="sync-text" class="text-[9px] font-black text-slate-500 uppercase tracking-tighter">OK</span>
             </div>
         </div>
         <div id="category-summary" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
@@ -81,15 +104,15 @@
     <main class="p-4 flex-1">
         <div class="flex flex-col gap-3 mb-4">
             <div class="flex gap-2">
-                <select id="filter-month" onchange="renderList()" class="flex-1 text-[11px] font-bold p-2 outline-none"></select>
-                <select id="filter-year" onchange="renderList()" class="w-20 text-[11px] font-bold p-2 outline-none"></select>
+                <select id="filter-month" onchange="renderList()" class="flex-1 text-[11px] p-2 outline-none"></select>
+                <select id="filter-year" onchange="renderList()" class="w-20 text-[11px] p-2 outline-none"></select>
             </div>
             <div class="flex items-center justify-between px-1">
-                <select id="ui-filter" onchange="renderList()" class="text-[9px] font-black uppercase bg-transparent outline-none border-none !p-0">
+                <select id="ui-filter" onchange="renderList()" class="text-[10px] font-extrabold uppercase bg-transparent outline-none border-none !p-0 tracking-wider">
                     <option value="unprocessed">Neprepísané</option>
                     <option value="all">Všetky</option>
                 </select>
-                <button id="clear-cat-filter" onclick="resetCategoryFilter()" class="hidden text-[9px] font-bold text-amber-500 uppercase tracking-wider">Zrušiť filter X</button>
+                <button id="clear-cat-filter" onclick="resetCategoryFilter()" class="hidden text-[10px] font-extrabold text-amber-500 uppercase tracking-wider">Zrušiť filter X</button>
             </div>
         </div>
         <div id="transaction-list" class="space-y-1"></div>
@@ -97,18 +120,18 @@
 
     <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-nav flex justify-around items-center h-16 z-30">
         <button onclick="showScreen('home')" class="text-emerald-500 p-4"><i data-lucide="layout-grid"></i></button>
-        <button onclick="openModal()" class="bg-emerald-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg -mt-8 border-4 border-white dark:border-slate-900 active:scale-95 transition-transform"><i data-lucide="plus" class="w-7 h-7"></i></button>
+        <button onclick="openModal()" class="bg-emerald-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg -mt-8 border-4 border-white dark:border-slate-900 active:scale-95 transition-all"><i data-lucide="plus" class="w-7 h-7"></i></button>
         <button onclick="showScreen('settings')" class="text-slate-400 p-4"><i data-lucide="settings"></i></button>
     </nav>
 </div>
 
 <div id="modal-overlay" class="fixed inset-0 bg-slate-900/90 z-[40] hidden backdrop-blur-sm flex items-end">
-    <div class="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-[2rem] p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-4 sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10">
-            <button onclick="closeModal()" class="text-slate-400 font-bold text-xs uppercase tracking-widest">Zavrieť</button>
-            <button onclick="document.getElementById('save-trigger').click()" class="bg-emerald-600 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-md">ULOŽIŤ</button>
+    <div class="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-[2.5rem] p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-6 sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10">
+            <button onclick="closeModal()" class="text-slate-400 font-extrabold text-[10px] uppercase tracking-widest">Zavrieť</button>
+            <button onclick="document.getElementById('save-trigger').click()" class="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-extrabold text-[10px] uppercase shadow-md">Uložiť</button>
         </div>
-        <form id="entry-form" onsubmit="handleSave(event)" class="space-y-4">
+        <form id="entry-form" onsubmit="handleSave(event)" class="space-y-5">
             <input type="submit" id="save-trigger" class="hidden">
             <input type="hidden" id="entry-id">
             
@@ -117,7 +140,7 @@
                 <button type="button" onclick="setUser('Zdenka')" id="u-Zdenka" class="flex-1 py-1.5 rounded-lg text-[9px] font-black transition-all">ZDENKA</button>
             </div>
 
-            <input type="number" id="f-amount" inputmode="decimal" step="0.01" placeholder="0.00" class="w-full text-center text-4xl font-bold py-1 outline-none border-none bg-transparent !p-0" required>
+            <input type="number" id="f-amount" inputmode="decimal" step="0.01" placeholder="0.00" class="w-full text-center text-5xl font-extrabold py-2 outline-none border-none bg-transparent !p-0" required>
             
             <div class="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                 <button type="button" id="t-ex" onclick="setType('expense')" class="flex-1 py-1.5 rounded-lg text-[9px] font-black">VÝDAVOK</button>
@@ -125,44 +148,44 @@
             </div>
 
             <div>
-                <label class="text-[9px] font-black text-slate-400 uppercase block mb-1.5 px-1 tracking-widest">Kategória</label>
+                <label class="text-[9px] font-black text-slate-400 uppercase block mb-2 px-1 tracking-widest">Kategória</label>
                 <div id="cat-grid" class="grid grid-cols-4 gap-1.5"></div>
             </div>
 
             <div id="sub-section" class="hidden">
-                <label class="text-[9px] font-black text-slate-400 uppercase block mb-1.5 px-1 tracking-widest">Podkategória</label>
+                <label class="text-[9px] font-black text-slate-400 uppercase block mb-2 px-1 tracking-widest">Podkategória</label>
                 <div id="sub-grid" class="flex flex-wrap gap-1.5"></div>
             </div>
             
             <div class="grid grid-cols-2 gap-2">
-                <input type="text" id="f-note" placeholder="Poznámka..." class="p-3 text-xs outline-none">
-                <input type="date" id="f-date" class="p-3 text-xs outline-none">
+                <input type="text" id="f-note" placeholder="Poznámka..." class="p-3.5 text-xs outline-none">
+                <input type="date" id="f-date" class="p-3.5 text-xs outline-none">
             </div>
             
-            <button type="button" id="del-btn" onclick="handleDelete()" class="w-full text-red-400 text-[9px] font-black uppercase pt-2 hidden">Odstrániť transakciu</button>
+            <button type="button" id="del-btn" onclick="handleDelete()" class="w-full text-red-400 text-[10px] font-black uppercase pt-2 hidden">Zmazať transakciu</button>
         </form>
     </div>
 </div>
 
 <div id="settings-screen" class="fixed inset-0 bg-white dark:bg-slate-900 z-50 hidden p-6 max-w-md mx-auto overflow-y-auto pb-24">
     <div id="settings-home">
-        <div class="flex items-center gap-4 mb-6"><button onclick="showScreen('home')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 class="text-xl font-bold">Nastavenia</h2></div>
+        <div class="flex items-center gap-4 mb-6"><button onclick="showScreen('home')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 class="text-xl font-extrabold">Nastavenia</h2></div>
         <div class="flex gap-2 mb-6">
-            <button onclick="fullCloudPull(true)" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold text-[9px] uppercase">Sync Transakcie</button>
-            <button onclick="syncCategories('pull')" class="flex-1 py-3 bg-slate-800 text-white rounded-xl font-bold text-[9px] uppercase">Sync Kategórie</button>
+            <button onclick="fullCloudPull(true)" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-extrabold text-[9px] uppercase shadow-sm">Sync Dáta</button>
+            <button onclick="syncCategories('pull')" class="flex-1 py-3 bg-slate-800 text-white rounded-xl font-extrabold text-[9px] uppercase shadow-sm">Sync Kategórie</button>
         </div>
         <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl mb-4 border border-slate-200 dark:border-slate-700">
-            <input type="text" id="new-cat-name" placeholder="Názov novej kategórie..." class="w-full p-3 rounded-xl mb-2 text-sm outline-none">
-            <button onclick="addCategory()" class="w-full py-3 bg-emerald-500 text-white rounded-xl font-bold text-[9px] uppercase">Pridať kategóriu</button>
+            <input type="text" id="new-cat-name" placeholder="Názov novej kategórie..." class="w-full p-3.5 rounded-xl mb-3 text-sm outline-none">
+            <button onclick="addCategory()" class="w-full py-3.5 bg-emerald-500 text-white rounded-xl font-extrabold text-[9px] uppercase tracking-wider">Pridať do zoznamu</button>
         </div>
         <div id="manage-cats-list" class="space-y-2 mb-8"></div>
-        </div>
+    </div>
     <div id="sub-editor" class="hidden">
-        <div class="flex items-center gap-4 mb-6"><button onclick="closeSubEditor()" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 id="sub-editor-title" class="text-xl font-bold"></h2></div>
+        <div class="flex items-center gap-4 mb-6"><button onclick="closeSubEditor()" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 id="sub-editor-title" class="text-xl font-extrabold"></h2></div>
         <div id="manage-subs-list" class="space-y-2 mb-4"></div>
         <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl">
-            <input type="text" id="new-sub-name" placeholder="Názov podkategórie..." class="w-full p-3 rounded-xl mb-2 text-sm outline-none">
-            <button onclick="addSubCategory()" class="w-full py-3 bg-emerald-500 text-white rounded-xl font-bold text-[9px] uppercase">Pridať podkategóriu</button>
+            <input type="text" id="new-sub-name" placeholder="Názov podkategórie..." class="w-full p-3.5 rounded-xl mb-3 text-sm outline-none">
+            <button onclick="addSubCategory()" class="w-full py-3.5 bg-emerald-500 text-white rounded-xl font-extrabold text-[9px] uppercase tracking-wider">Pridať podkategóriu</button>
         </div>
     </div>
 </div>
@@ -198,7 +221,7 @@
     }
 
     async function fullCloudPull(manual = false) {
-        if(manual && !confirm("Stiahnuť dáta z cloudu?")) return;
+        if(manual && !confirm("Stiahnuť všetky dáta z cloudu?")) return;
         updateSyncUI('syncing');
         try {
             const res = await fetch(GOOGLE_URL);
@@ -240,13 +263,13 @@
         if(activeCategoryFilter) filtered = filtered.filter(d => d.category === activeCategoryFilter);
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
         list.innerHTML = filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(item => `
-            <div class="transaction-item p-3.5 flex items-center justify-between ${item.processed ? 'processed' : ''}">
+            <div class="transaction-item p-4 flex items-center justify-between ${item.processed ? 'processed' : ''}">
                 <div class="flex-1" onclick="openModal('${item.id}')">
                     <div class="flex justify-between items-center pr-3">
-                        <span class="font-semibold text-xs">${item.category}${item.sub ? ' <span class="text-slate-400 font-normal">/</span> '+item.sub : ''}</span>
-                        <span class="font-bold text-xs ${item.type === 'income' ? 'text-emerald-500' : ''}">${item.amount.toFixed(2)}€</span>
+                        <span class="font-bold text-xs tracking-tight">${item.category}${item.sub ? ' <span class="text-slate-400 font-medium">/</span> '+item.sub : ''}</span>
+                        <span class="font-extrabold text-xs ${item.type === 'income' ? 'text-emerald-500' : ''}">${item.amount.toFixed(2)}€</span>
                     </div>
-                    <div class="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-0.5">${item.user || 'Lukáš'} ${item.note ? '• '+item.note : ''}</div>
+                    <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${item.user || 'Lukáš'} ${item.note ? '• '+item.note : ''}</div>
                 </div>
                 <button onclick="toggleProcessed('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}"><i data-lucide="check" class="w-4 h-4"></i></button>
             </div>`).join('');
@@ -256,15 +279,15 @@
     function renderSummary(sums) {
         const container = document.getElementById('category-summary');
         container.innerHTML = Object.keys(sums).sort((a,b) => sums[b] - sums[a]).map(cat => `
-            <div onclick="toggleFilter('${cat}')" class="summary-card flex-shrink-0 px-3 py-1.5 rounded-xl cursor-pointer ${activeCategoryFilter === cat ? 'active-filter' : ''}">
-                <div class="text-[7px] font-black ${activeCategoryFilter === cat ? 'text-amber-500' : 'text-slate-400'} uppercase truncate">${cat}</div>
-                <div class="text-[10px] font-bold">${sums[cat].toFixed(2)}€</div>
+            <div onclick="toggleFilter('${cat}')" class="summary-card flex-shrink-0 px-3 py-2 rounded-xl cursor-pointer ${activeCategoryFilter === cat ? 'active-filter' : ''}">
+                <div class="text-[7.5px] font-black ${activeCategoryFilter === cat ? 'text-amber-500' : 'text-slate-400'} uppercase truncate tracking-wider">${cat}</div>
+                <div class="text-[10px] font-extrabold">${sums[cat].toFixed(2)}€</div>
             </div>`).join('');
     }
 
     function renderCatGrid() { 
         document.getElementById('cat-grid').innerHTML = categories.map(c => `
-            <button type="button" onclick="selectCat('${c.id}')" data-id="${c.id}" class="cat-tile flex flex-col items-center justify-center p-1 rounded-xl shadow-sm">
+            <button type="button" onclick="selectCat('${c.id}')" data-id="${c.id}" class="cat-tile flex flex-col items-center justify-center p-1 rounded-2xl shadow-sm">
                 <i data-lucide="${c.icon || 'layers'}"></i>
                 <span class="truncate w-full">${c.id}</span>
             </button>`).join(''); 
@@ -275,14 +298,14 @@
         curUser = u; localStorage.setItem('f_last_user', u);
         ['Lukáš', 'Zdenka'].forEach(user => {
             const btn = document.getElementById(`u-${user}`);
-            btn.className = user === u ? 'flex-1 py-1.5 rounded-lg text-[9px] font-black bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9px] font-black text-slate-400';
+            btn.className = user === u ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400';
         });
     }
 
     function setType(t) {
         curType = t;
-        document.getElementById('t-ex').className = t === 'expense' ? 'flex-1 py-1.5 rounded-lg text-[9px] font-black bg-white dark:bg-slate-700 text-red-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9px] font-black text-slate-400';
-        document.getElementById('t-in').className = t === 'income' ? 'flex-1 py-1.5 rounded-lg text-[9px] font-black bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9px] font-black text-slate-400';
+        document.getElementById('t-ex').className = t === 'expense' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-red-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400';
+        document.getElementById('t-in').className = t === 'income' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400';
     }
 
     function selectCat(id) { 
@@ -291,7 +314,7 @@
         const cat = categories.find(c => c.id === id); 
         if(cat && cat.subs.length > 0) { 
             document.getElementById('sub-section').classList.remove('hidden'); 
-            document.getElementById('sub-grid').innerHTML = cat.subs.map(s => `<button type="button" onclick="selectSub('${s}')" data-sub="${s}" class="sub-chip px-2.5 py-1.5 rounded-lg font-bold uppercase shadow-sm">${s}</button>`).join(''); 
+            document.getElementById('sub-grid').innerHTML = cat.subs.map(s => `<button type="button" onclick="selectSub('${s}')" data-sub="${s}" class="sub-chip px-3 py-2 rounded-xl font-extrabold uppercase shadow-sm">${s}</button>`).join(''); 
         } else { 
             document.getElementById('sub-section').classList.add('hidden'); 
         } 
@@ -338,9 +361,9 @@
     function handleDelete() { const id = document.getElementById('entry-id').value; if(confirm('Naozaj vymazať?')) { syncQueue.push({ id, action: 'delete' }); db = db.filter(x => String(x.id) !== String(id)); saveData(false); closeModal(); renderList(); processSyncQueue(); } }
 
     function addCategory() { let n = document.getElementById('new-cat-name').value.trim(); if(n) { categories.push({id: n, icon: 'layers', subs: []}); document.getElementById('new-cat-name').value = ''; saveData(true); renderManageCats(); } }
-    function renderManageCats() { document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `<div class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between shadow-sm"><div class="flex-1 cursor-pointer" onclick="openSubEditor(${i})"><div class="font-bold text-sm">${c.id}</div><div class="text-[9px] text-slate-400 uppercase font-bold">${c.subs.length} podkategórií</div></div><div class="flex gap-1"><button onclick="moveCat(${i}, -1)" class="p-2 text-slate-400"><i data-lucide="chevron-up" class="w-4 h-4"></i></button><button onclick="moveCat(${i}, 1)" class="p-2 text-slate-400"><i data-lucide="chevron-down" class="w-4 h-4"></i></button><button onclick="deleteCat(${i})" class="p-2 text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`).join(''); lucide.createIcons(); }
+    function renderManageCats() { document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `<div class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between shadow-sm"><div class="flex-1 cursor-pointer" onclick="openSubEditor(${i})"><div class="font-extrabold text-sm">${c.id}</div><div class="text-[9px] text-slate-400 uppercase font-black">${c.subs.length} podkategórií</div></div><div class="flex gap-1"><button onclick="moveCat(${i}, -1)" class="p-2 text-slate-400"><i data-lucide="chevron-up" class="w-4 h-4"></i></button><button onclick="moveCat(${i}, 1)" class="p-2 text-slate-400"><i data-lucide="chevron-down" class="w-4 h-4"></i></button><button onclick="deleteCat(${i})" class="p-2 text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`).join(''); lucide.createIcons(); }
     function openSubEditor(idx) { editingCatIdx = idx; document.getElementById('settings-home').classList.add('hidden'); document.getElementById('sub-editor').classList.remove('hidden'); document.getElementById('sub-editor-title').innerText = categories[idx].id; renderManageSubs(); }
-    function renderManageSubs() { document.getElementById('manage-subs-list').innerHTML = categories[editingCatIdx].subs.map((s, i) => `<div class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between"><span class="font-bold text-sm">${s}</span><button onclick="deleteSub(${i})" class="text-red-300"><i data-lucide="x" class="w-5 h-5"></i></button></div>`).join(''); lucide.createIcons(); }
+    function renderManageSubs() { document.getElementById('manage-subs-list').innerHTML = categories[editingCatIdx].subs.map((s, i) => `<div class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between"><span class="font-extrabold text-sm">${s}</span><button onclick="deleteSub(${i})" class="text-red-300"><i data-lucide="x" class="w-5 h-5"></i></button></div>`).join(''); lucide.createIcons(); }
     function addSubCategory() { let n = document.getElementById('new-sub-name').value.trim(); if(n && editingCatIdx !== null) { categories[editingCatIdx].subs.push(n); document.getElementById('new-sub-name').value = ''; saveData(true); renderManageSubs(); } }
     function deleteSub(i) { categories[editingCatIdx].subs.splice(i,1); saveData(true); renderManageSubs(); }
     function closeSubEditor() { document.getElementById('settings-home').classList.remove('hidden'); document.getElementById('sub-editor').classList.add('hidden'); }
