@@ -40,6 +40,7 @@
                 <span id="sync-text" class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">OK</span>
             </div>
         </div>
+        
         <div id="category-summary" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
     </header>
 
@@ -103,17 +104,23 @@
     let db = JSON.parse(localStorage.getItem('f_db_v18')) || [];
     let syncQueue = JSON.parse(localStorage.getItem('f_sync_q_v18')) || [];
     
-    // VRÁTENÉ VŠETKY PÔVODNÉ KATEGÓRIE
-    let categories = JSON.parse(localStorage.getItem('f_cats_v18')) || [
-        { id: 'Potraviny', icon: 'shopping-cart', subs: ['Lidl', 'Kaufland', 'Tesco', 'Iné'] },
-        { id: 'Strava', icon: 'utensils', subs: ['Obed', 'Restauracia', 'Fastfood'] },
-        { id: 'Domácnosť', icon: 'home', subs: ['Nájom', 'Energie', 'Drogéria', 'Opravy'] },
-        { id: 'Doprava', icon: 'car', subs: ['Benzín', 'MHD', 'Servis', 'Parkovné'] },
-        { id: 'Voľný čas', icon: 'smile', subs: ['Kino', 'Knihy', 'Hobby', 'Káva'] },
-        { id: 'Zdravie', icon: 'heart', subs: ['Lekáreň', 'Lekár', 'Doplnky'] },
-        { id: 'Osobné', icon: 'user', subs: ['Oblečenie', 'Kozmetika', 'Kaderník'] },
-        { id: 'Iné', icon: 'layers', subs: [] }
+    // KOMPLETNÝ ZOZNAM KATEGÓRIÍ A PODKATEGÓRIÍ
+    let defaultCategories = [
+        { id: 'Potraviny', icon: 'shopping-cart', subs: ['Lidl', 'Kaufland', 'Tesco', 'Billa', 'Iné'] },
+        { id: 'Strava', icon: 'utensils', subs: ['Obed', 'Reštaurácia', 'Fastfood', 'Káva'] },
+        { id: 'Domácnosť', icon: 'home', subs: ['Nájom', 'Energie', 'Drogéria', 'Zariadenie'] },
+        { id: 'Doprava', icon: 'car', subs: ['Benzín', 'MHD', 'Servis', 'Parkovné', 'Bolt/Uber'] },
+        { id: 'Osobné', icon: 'user', subs: ['Oblečenie', 'Kaderník', 'Kozmetika', 'Mobil'] },
+        { id: 'Zdravie', icon: 'heart', subs: ['Lekáreň', 'Lekár', 'Vitamíny'] },
+        { id: 'Voľný čas', icon: 'smile', subs: ['Kino', 'Knihy', 'Hobby', 'Výlet'] },
+        { id: 'Iné', icon: 'layers', subs: ['Darčeky', 'Poplatky', 'Ostatné'] }
     ];
+
+    let categories = JSON.parse(localStorage.getItem('f_cats_v18'));
+    if (!categories || categories.length === 0) {
+        categories = defaultCategories;
+        localStorage.setItem('f_cats_v18', JSON.stringify(categories));
+    }
     
     let curType = 'expense', selectedCat = '', selectedSub = '', activeCategoryFilter = null, isSyncing = false, editingCatIdx = null;
 
@@ -157,13 +164,21 @@
         const clearBtn = document.getElementById('clear-cat-filter');
         let data = [...db].sort((a,b) => new Date(b.date) - new Date(a.date));
         
+        // Sumárne karty (iba pre výdavky)
         const summaryData = filter === 'unprocessed' ? data.filter(d => !d.processed) : data;
         const sums = {};
-        summaryData.forEach(item => { if (item.type === 'expense') sums[item.category] = (sums[item.category] || 0) + item.amount; });
+        summaryData.forEach(item => { 
+            if (item.type === 'expense') sums[item.category] = (sums[item.category] || 0) + item.amount; 
+        });
         renderSummary(sums);
 
         if(filter === 'unprocessed') data = data.filter(d => !d.processed);
-        if(activeCategoryFilter) { data = data.filter(d => d.category === activeCategoryFilter); clearBtn.classList.remove('hidden'); } else { clearBtn.classList.add('hidden'); }
+        if(activeCategoryFilter) { 
+            data = data.filter(d => d.category === activeCategoryFilter); 
+            clearBtn.classList.remove('hidden'); 
+        } else { 
+            clearBtn.classList.add('hidden'); 
+        }
 
         list.innerHTML = data.map(item => `
             <div class="bg-white p-3 rounded-2xl flex items-center justify-between border-2 ${item.processed ? 'processed border-transparent' : 'border-slate-50 shadow-sm'}">
@@ -178,7 +193,10 @@
 
     function renderSummary(sums) {
         const container = document.getElementById('category-summary');
-        container.innerHTML = Object.keys(sums).sort((a,b) => sums[b] - sums[a]).map(cat => `
+        const sortedCats = Object.keys(sums).sort((a,b) => sums[b] - sums[a]);
+        if(sortedCats.length === 0) { container.innerHTML = '<div class="text-[10px] text-slate-300 font-bold uppercase py-2">Žiadne výdavky</div>'; return; }
+        
+        container.innerHTML = sortedCats.map(cat => `
             <div onclick="toggleFilter('${cat}')" class="summary-card flex-shrink-0 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 cursor-pointer ${activeCategoryFilter === cat ? 'active-filter' : ''}">
                 <div class="text-[8px] font-black ${activeCategoryFilter === cat ? 'text-blue-600' : 'text-slate-400'} uppercase truncate">${cat}</div>
                 <div class="text-xs font-bold text-slate-700">${sums[cat].toFixed(2)}€</div>
@@ -221,7 +239,7 @@
         document.querySelectorAll('.cat-tile').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
         const cat = categories.find(c => c.id === id);
         const subSec = document.getElementById('sub-section');
-        if(cat && cat.subs.length > 0) {
+        if(cat && cat.subs && cat.subs.length > 0) {
             subSec.classList.remove('hidden');
             document.getElementById('sub-grid').innerHTML = cat.subs.map(s => `
                 <button type="button" onclick="selectSub('${s}')" data-sub="${s}" class="sub-chip px-3 py-1.5 rounded-xl text-[10px] font-black uppercase text-slate-500 bg-white">${s}</button>`).join('');
@@ -239,11 +257,12 @@
         document.getElementById('t-in').className = t === 'income' ? 'flex-1 py-2 rounded-lg text-[10px] font-black bg-white text-green-600 shadow-sm' : 'flex-1 py-2 rounded-lg text-[10px] font-black text-slate-400';
     }
 
+    function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s === 'settings') renderManageCats(); else renderList(); }
+    
     function renderManageCats() {
         document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `
             <div class="p-3 bg-white rounded-2xl border flex items-center justify-between shadow-sm">
                 <div class="flex-1 cursor-pointer" onclick="openSubEditor(${i})"><div class="font-bold text-sm">${c.id}</div></div>
-                <button onclick="deleteCat(${i})" class="text-red-300 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </div>`).join('');
         lucide.createIcons();
     }
@@ -260,16 +279,12 @@
         document.getElementById('manage-subs-list').innerHTML = categories[editingCatIdx].subs.map((s, i) => `
             <div class="p-3 bg-white rounded-xl border flex items-center justify-between mb-2">
                 <span class="font-bold text-sm">${s}</span>
-                <button onclick="deleteSub(${i})" class="text-red-200 p-2"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>`).join('');
         lucide.createIcons();
     }
 
-    function deleteCat(i) { if(confirm('Zmazať?')) { categories.splice(i,1); saveData(); renderManageCats(); } }
-    function deleteSub(i) { categories[editingCatIdx].subs.splice(i,1); saveData(); renderManageSubs(); }
     function closeSubEditor() { document.getElementById('settings-home').classList.remove('hidden'); document.getElementById('sub-editor').classList.add('hidden'); }
     function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
-    function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s === 'settings') renderManageCats(); else renderList(); }
     
     function saveData() {
         localStorage.setItem('f_db_v18', JSON.stringify(db));
