@@ -49,6 +49,48 @@
         .app-container { background-color: var(--bg-card); color: var(--text-main); }
         .processed { opacity: 0.3; filter: grayscale(1); }
         
+        /* SEGMENTED CONTROL STYLES */
+        .toggle-container {
+            display: flex;
+            background: var(--bg-main);
+            padding: 4px;
+            border-radius: 12px;
+            position: relative;
+            border: 1px solid var(--border);
+            width: 180px;
+        }
+        .toggle-option {
+            flex: 1;
+            text-align: center;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 6px 0;
+            z-index: 2;
+            cursor: pointer;
+            color: var(--text-dim);
+            transition: color 0.3s;
+            letter-spacing: 0.05em;
+        }
+        .toggle-option.active {
+            color: #0b0f1a;
+        }
+        .toggle-slider {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: calc(50% - 4px);
+            height: calc(100% - 8px);
+            background: var(--accent);
+            border-radius: 9px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .all-active .toggle-slider {
+            transform: translateX(100%);
+        }
+
         .cat-tile { transition: all 0.2s; border: 1px solid var(--border); cursor: pointer; height: 58px; background: var(--bg-card); color: var(--text-dim); border-radius: 14px; }
         .cat-tile.selected { border-color: var(--accent); background-color: var(--accent-soft); color: var(--accent); border-width: 2px; }
         .cat-tile i { width: 14px; height: 14px; margin-bottom: 2px; }
@@ -102,10 +144,11 @@
                 <select id="filter-year" onchange="renderList()" class="w-20 text-[11px] p-2 outline-none"></select>
             </div>
             <div class="flex items-center justify-between px-1">
-                <select id="ui-filter" onchange="renderList()" class="text-[10px] font-extrabold uppercase bg-transparent outline-none border-none !p-0 tracking-wider">
-                    <option value="unprocessed">Neprepísané</option>
-                    <option value="all">Všetky</option>
-                </select>
+                <div id="ui-toggle" class="toggle-container" onclick="toggleStatusFilter()">
+                    <div class="toggle-slider"></div>
+                    <div id="opt-unprocessed" class="toggle-option active">Nové</div>
+                    <div id="opt-all" class="toggle-option">Všetky</div>
+                </div>
                 <button id="clear-cat-filter" onclick="resetCategoryFilter()" class="hidden text-[10px] font-extrabold text-amber-500 uppercase tracking-wider">Zrušiť filter X</button>
             </div>
         </div>
@@ -187,6 +230,7 @@
     let categories = JSON.parse(localStorage.getItem('f_cats_v20')) || [];
     let curUser = localStorage.getItem('f_last_user') || 'Lukáš';
     let curType = 'expense', selectedCat = '', selectedSub = '', activeCategoryFilter = null, isSyncing = false, editingCatIdx = null;
+    let currentStatusFilter = 'unprocessed'; // predvolený stav
 
     async function syncCategories(action = 'push') {
         updateSyncUI('syncing');
@@ -235,22 +279,38 @@
         isSyncing = false; updateSyncUI('ok'); 
     }
 
-    // OPRAVENÁ FUNKCIA FILTRÁCIE
+    // LOGIKA PRE PREPÍNAČ
+    function toggleStatusFilter() {
+        const container = document.getElementById('ui-toggle');
+        const optUnprocessed = document.getElementById('opt-unprocessed');
+        const optAll = document.getElementById('opt-all');
+
+        if (currentStatusFilter === 'unprocessed') {
+            currentStatusFilter = 'all';
+            container.classList.add('all-active');
+            optUnprocessed.classList.remove('active');
+            optAll.classList.add('active');
+        } else {
+            currentStatusFilter = 'unprocessed';
+            container.classList.remove('all-active');
+            optUnprocessed.classList.add('active');
+            optAll.classList.remove('active');
+        }
+        renderList();
+    }
+
     function renderList() {
         const list = document.getElementById('transaction-list');
         const selMonth = parseInt(document.getElementById('filter-month').value);
         const selYear = parseInt(document.getElementById('filter-year').value);
-        const filterStatus = document.getElementById('ui-filter').value;
         
-        // 1. Základný filter na zvolený mesiac a rok
         let filtered = db.filter(d => {
             const dt = new Date(d.date);
             return dt.getMonth() === selMonth && dt.getFullYear() === selYear;
         });
 
-        // 2. Vytvorenie sumára (používa transakcie daného mesiaca podľa UI filtra)
         let summaryData = filtered;
-        if(filterStatus === 'unprocessed') summaryData = summaryData.filter(d => !d.processed);
+        if(currentStatusFilter === 'unprocessed') summaryData = summaryData.filter(d => !d.processed);
         
         const sums = {};
         summaryData.forEach(item => {
@@ -260,12 +320,10 @@
         });
         renderSummary(sums);
 
-        // 3. Aplikácia UI filtra (Neprepísané vs Všetky) na zoznam
-        if(filterStatus === 'unprocessed') {
+        if(currentStatusFilter === 'unprocessed') {
             filtered = filtered.filter(d => !d.processed);
         }
 
-        // 4. Aplikácia filtra podľa kategórie (ak je aktívny)
         if(activeCategoryFilter) {
             filtered = filtered.filter(d => d.category === activeCategoryFilter);
         }
