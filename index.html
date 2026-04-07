@@ -49,7 +49,6 @@
         .app-container { background-color: var(--bg-card); color: var(--text-main); }
         .processed { opacity: 0.3; filter: grayscale(1); }
         
-        /* SEGMENTED CONTROL STYLES */
         .toggle-container {
             display: flex;
             background: var(--bg-main);
@@ -72,9 +71,7 @@
             transition: color 0.3s;
             letter-spacing: 0.05em;
         }
-        .toggle-option.active {
-            color: #0b0f1a;
-        }
+        .toggle-option.active { color: #0b0f1a; }
         .toggle-slider {
             position: absolute;
             top: 4px;
@@ -87,9 +84,7 @@
             z-index: 1;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .all-active .toggle-slider {
-            transform: translateX(100%);
-        }
+        .all-active .toggle-slider { transform: translateX(100%); }
 
         .cat-tile { transition: all 0.2s; border: 1px solid var(--border); cursor: pointer; height: 58px; background: var(--bg-card); color: var(--text-dim); border-radius: 14px; }
         .cat-tile.selected { border-color: var(--accent); background-color: var(--accent-soft); color: var(--accent); border-width: 2px; }
@@ -210,14 +205,6 @@
         </div>
         <div id="manage-cats-list" class="space-y-2 mb-8"></div>
     </div>
-    <div id="sub-editor" class="hidden">
-        <div class="flex items-center gap-4 mb-6"><button onclick="closeSubEditor()" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 id="sub-editor-title" class="text-xl font-extrabold"></h2></div>
-        <div id="manage-subs-list" class="space-y-2 mb-4"></div>
-        <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl">
-            <input type="text" id="new-sub-name" placeholder="Názov podkategórie..." class="w-full p-3.5 rounded-xl mb-3 text-sm outline-none">
-            <button onclick="addSubCategory()" class="w-full py-3.5 bg-emerald-500 text-white rounded-xl font-extrabold text-[9px] uppercase tracking-wider">Pridať podkategóriu</button>
-        </div>
-    </div>
 </div>
 
 <script>
@@ -229,8 +216,10 @@
     let syncQueue = JSON.parse(localStorage.getItem('f_sync_q_v20')) || [];
     let categories = JSON.parse(localStorage.getItem('f_cats_v20')) || [];
     let curUser = localStorage.getItem('f_last_user') || 'Lukáš';
+    let lastCat = localStorage.getItem('f_last_cat') || '';
+    let lastSub = localStorage.getItem('f_last_sub') || '';
     let curType = 'expense', selectedCat = '', selectedSub = '', activeCategoryFilter = null, isSyncing = false, editingCatIdx = null;
-    let currentStatusFilter = 'unprocessed'; // predvolený stav
+    let currentStatusFilter = 'unprocessed';
 
     async function syncCategories(action = 'push') {
         updateSyncUI('syncing');
@@ -244,26 +233,9 @@
                     categories = cloudData;
                     localStorage.setItem('f_cats_v20', JSON.stringify(categories));
                     renderCatGrid();
-                    if(!document.getElementById('settings-screen').classList.contains('hidden')) renderManageCats();
                 }
             } catch (e) { }
         }
-        updateSyncUI('ok');
-    }
-
-    async function fullCloudPull(manual = false) {
-        if(manual && !confirm("Stiahnuť všetky dáta z cloudu?")) return;
-        updateSyncUI('syncing');
-        try {
-            const res = await fetch(GOOGLE_URL);
-            const data = await res.json();
-            if(Array.isArray(data)) {
-                db = data.filter(x => x.id && String(x.id).startsWith('ID-')).map(item => ({ 
-                    ...item, date: item.date ? String(item.date).split('T')[0] : '', amount: parseFloat(item.amount), processed: item.processed === "ÁNO" 
-                }));
-                saveData(false); renderList();
-            }
-        } catch (e) {}
         updateSyncUI('ok');
     }
 
@@ -279,23 +251,11 @@
         isSyncing = false; updateSyncUI('ok'); 
     }
 
-    // LOGIKA PRE PREPÍNAČ
     function toggleStatusFilter() {
-        const container = document.getElementById('ui-toggle');
-        const optUnprocessed = document.getElementById('opt-unprocessed');
-        const optAll = document.getElementById('opt-all');
-
-        if (currentStatusFilter === 'unprocessed') {
-            currentStatusFilter = 'all';
-            container.classList.add('all-active');
-            optUnprocessed.classList.remove('active');
-            optAll.classList.add('active');
-        } else {
-            currentStatusFilter = 'unprocessed';
-            container.classList.remove('all-active');
-            optUnprocessed.classList.add('active');
-            optAll.classList.remove('active');
-        }
+        currentStatusFilter = (currentStatusFilter === 'unprocessed') ? 'all' : 'unprocessed';
+        document.getElementById('ui-toggle').classList.toggle('all-active', currentStatusFilter === 'all');
+        document.getElementById('opt-unprocessed').classList.toggle('active', currentStatusFilter === 'unprocessed');
+        document.getElementById('opt-all').classList.toggle('active', currentStatusFilter === 'all');
         renderList();
     }
 
@@ -314,19 +274,12 @@
         
         const sums = {};
         summaryData.forEach(item => {
-            if (item.type === 'expense') {
-                sums[item.category] = (sums[item.category] || 0) + item.amount;
-            }
+            if (item.type === 'expense') sums[item.category] = (sums[item.category] || 0) + item.amount;
         });
         renderSummary(sums);
 
-        if(currentStatusFilter === 'unprocessed') {
-            filtered = filtered.filter(d => !d.processed);
-        }
-
-        if(activeCategoryFilter) {
-            filtered = filtered.filter(d => d.category === activeCategoryFilter);
-        }
+        if(currentStatusFilter === 'unprocessed') filtered = filtered.filter(d => !d.processed);
+        if(activeCategoryFilter) filtered = filtered.filter(d => d.category === activeCategoryFilter);
 
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
         
@@ -341,9 +294,7 @@
                 </div>
                 <button onclick="toggleProcessed('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}"><i data-lucide="check" class="w-4 h-4"></i></button>
             </div>`).join('');
-            
-        updateTotals(); 
-        lucide.createIcons();
+        updateTotals(); lucide.createIcons();
     }
 
     function renderSummary(sums) {
@@ -380,6 +331,7 @@
 
     function selectCat(id) { 
         selectedCat = id; selectedSub = ''; 
+        localStorage.setItem('f_last_cat', id);
         document.querySelectorAll('.cat-tile').forEach(el => el.classList.toggle('selected', el.dataset.id === id)); 
         const cat = categories.find(c => c.id === id); 
         if(cat && cat.subs.length > 0) { 
@@ -390,7 +342,41 @@
         } 
     }
 
-    function selectSub(s) { selectedSub = s; document.querySelectorAll('.sub-chip').forEach(el => el.classList.toggle('active', el.dataset.sub === s)); }
+    function selectSub(s) { 
+        selectedSub = s; 
+        localStorage.setItem('f_last_sub', s);
+        document.querySelectorAll('.sub-chip').forEach(el => el.classList.toggle('active', el.dataset.sub === s)); 
+    }
+
+    function openModal(id = null) {
+        const overlay = document.getElementById('modal-overlay');
+        const amountInput = document.getElementById('f-amount');
+        overlay.classList.remove('hidden');
+        renderCatGrid();
+
+        if(id) {
+            const i = db.find(x => String(x.id) === String(id));
+            document.getElementById('entry-id').value = i.id; amountInput.value = i.amount;
+            document.getElementById('f-note').value = i.note; document.getElementById('f-date').value = i.date;
+            setUser(i.user || 'Lukáš'); setType(i.type); selectCat(i.category);
+            if(i.sub) setTimeout(() => selectSub(i.sub), 50);
+            document.getElementById('del-btn').classList.remove('hidden');
+        } else {
+            document.getElementById('entry-form').reset(); document.getElementById('f-date').valueAsDate = new Date();
+            setUser(localStorage.getItem('f_last_user') || 'Lukáš'); setType('expense');
+            // Preddefinovaná kategória
+            let catToSelect = lastCat || (categories[0]?.id || '');
+            selectCat(catToSelect);
+            if(lastSub) setTimeout(() => selectSub(lastSub), 50);
+            document.getElementById('del-btn').classList.add('hidden');
+        }
+
+        // AUTO-FOCUS & KEYBOARD TRIGGER
+        setTimeout(() => {
+            amountInput.focus();
+            amountInput.select(); // Vyberie text, aby si ho mohol hneď prepísať
+        }, 300);
+    }
 
     function handleSave(e) {
         e.preventDefault();
@@ -401,32 +387,15 @@
         syncQueue.push(entry); saveData(false); closeModal(); renderList(); processSyncQueue();
     }
 
-    function openModal(id = null) {
-        document.getElementById('modal-overlay').classList.remove('hidden');
-        renderCatGrid();
-        if(id) {
-            const i = db.find(x => String(x.id) === String(id));
-            document.getElementById('entry-id').value = i.id; document.getElementById('f-amount').value = i.amount;
-            document.getElementById('f-note').value = i.note; document.getElementById('f-date').value = i.date;
-            setUser(i.user || 'Lukáš'); setType(i.type); selectCat(i.category);
-            if(i.sub) setTimeout(() => selectSub(i.sub), 50);
-            document.getElementById('del-btn').classList.remove('hidden');
-        } else {
-            document.getElementById('entry-form').reset(); document.getElementById('f-date').valueAsDate = new Date();
-            setUser(localStorage.getItem('f_last_user') || 'Lukáš'); setType('expense'); selectCat(categories[0]?.id || '');
-            document.getElementById('del-btn').classList.add('hidden');
-        }
-    }
-
     function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
-    function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s === 'settings') renderManageCats(); else renderList(); }
+    function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s !== 'settings') renderList(); }
     function toggleFilter(cat) { activeCategoryFilter = (activeCategoryFilter === cat) ? null : cat; renderList(); }
     function resetCategoryFilter() { activeCategoryFilter = null; renderList(); }
     function toggleProcessed(id) { db = db.map(x => String(x.id) === String(id) ? {...x, processed: !x.processed} : x); syncQueue.push({...db.find(x => String(x.id) === String(id)), action: 'save'}); saveData(false); renderList(); processSyncQueue(); }
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
     function updateTotals() { const bal = db.reduce((s,x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; }
     function updateSyncUI(status) { const dot = document.getElementById('sync-dot'); dot.className = (status === 'syncing') ? "w-2 bg-blue-400 animate-pulse rounded-full" : "w-2 bg-emerald-500 rounded-full"; document.getElementById('sync-text').innerText = (status === 'syncing') ? "..." : (syncQueue.length || "OK"); }
-    function manualSync() { fullCloudPull(true); processSyncQueue(); }
+    function manualSync() { processSyncQueue(); }
     
     function initTimeFilters() { 
         const mSelect = document.getElementById('filter-month'), ySelect = document.getElementById('filter-year');
@@ -439,17 +408,7 @@
 
     function handleDelete() { const id = document.getElementById('entry-id').value; if(confirm('Naozaj vymazať?')) { syncQueue.push({ id, action: 'delete' }); db = db.filter(x => String(x.id) !== String(id)); saveData(false); closeModal(); renderList(); processSyncQueue(); } }
 
-    function addCategory() { let n = document.getElementById('new-cat-name').value.trim(); if(n) { categories.push({id: n, icon: 'layers', subs: []}); document.getElementById('new-cat-name').value = ''; saveData(true); renderManageCats(); } }
-    function renderManageCats() { document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `<div class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between shadow-sm"><div class="flex-1 cursor-pointer" onclick="openSubEditor(${i})"><div class="font-extrabold text-sm">${c.id}</div><div class="text-[9px] text-slate-400 uppercase font-black">${c.subs.length} podkategórií</div></div><div class="flex gap-1"><button onclick="moveCat(${i}, -1)" class="p-2 text-slate-400"><i data-lucide="chevron-up" class="w-4 h-4"></i></button><button onclick="moveCat(${i}, 1)" class="p-2 text-slate-400"><i data-lucide="chevron-down" class="w-4 h-4"></i></button><button onclick="deleteCat(${i})" class="p-2 text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`).join(''); lucide.createIcons(); }
-    function openSubEditor(idx) { editingCatIdx = idx; document.getElementById('settings-home').classList.add('hidden'); document.getElementById('sub-editor').classList.remove('hidden'); document.getElementById('sub-editor-title').innerText = categories[idx].id; renderManageSubs(); }
-    function renderManageSubs() { document.getElementById('manage-subs-list').innerHTML = categories[editingCatIdx].subs.map((s, i) => `<div class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between"><span class="font-extrabold text-sm">${s}</span><button onclick="deleteSub(${i})" class="text-red-300"><i data-lucide="x" class="w-5 h-5"></i></button></div>`).join(''); lucide.createIcons(); }
-    function addSubCategory() { let n = document.getElementById('new-sub-name').value.trim(); if(n && editingCatIdx !== null) { categories[editingCatIdx].subs.push(n); document.getElementById('new-sub-name').value = ''; saveData(true); renderManageSubs(); } }
-    function deleteSub(i) { categories[editingCatIdx].subs.splice(i,1); saveData(true); renderManageSubs(); }
-    function closeSubEditor() { document.getElementById('settings-home').classList.remove('hidden'); document.getElementById('sub-editor').classList.add('hidden'); }
-    function moveCat(idx, dir) { let nIdx = idx + dir; if(nIdx >= 0 && nIdx < categories.length) { [categories[idx], categories[nIdx]] = [categories[nIdx], categories[idx]]; saveData(true); renderManageCats(); } }
-    function deleteCat(i) { if(confirm('Zmazať kategóriu?')) { categories.splice(i,1); saveData(true); renderManageCats(); } }
-
-    window.onload = () => { initTimeFilters(); renderList(); renderCatGrid(); fullCloudPull(false); syncCategories('pull'); };
+    window.onload = () => { initTimeFilters(); renderList(); renderCatGrid(); syncCategories('pull'); };
 </script>
 </body>
 </html>
