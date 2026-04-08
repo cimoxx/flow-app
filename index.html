@@ -283,6 +283,23 @@
         updateSyncUI('ok'); 
     }
 
+    // NOVA FUNKCIA: STIAHNUTIE TRANSAKCII Z CLOUDU
+    async function syncTransactions(action = 'pull') {
+        if (action === 'pull') {
+            updateSyncUI('syncing');
+            try {
+                const res = await fetch(GOOGLE_URL + "?get=transactions");
+                const cloudData = await res.json();
+                if (Array.isArray(cloudData)) {
+                    db = cloudData;
+                    localStorage.setItem('f_db_v20', JSON.stringify(db));
+                    renderList();
+                }
+            } catch (e) { console.error("Sync error:", e); }
+            updateSyncUI('ok');
+        }
+    }
+
     // MODAL
     function openModal(id = null) {
         const overlay = document.getElementById('modal-overlay');
@@ -448,7 +465,13 @@
     function toggleProcessed(id) { db = db.map(x => String(x.id) === String(id) ? {...x, processed: !x.processed} : x); syncQueue.push({...db.find(x => String(x.id) === String(id)), action: 'save'}); saveData(false); renderList(); processSyncQueue(); }
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
     function updateTotals() { const bal = db.reduce((s,x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; }
-    function manualSync() { processSyncQueue(); }
+    
+    function manualSync() { 
+        syncCategories('pull');
+        syncTransactions('pull');
+        processSyncQueue(); 
+    }
+
     function initTimeFilters() { 
         const mSelect = document.getElementById('filter-month'), ySelect = document.getElementById('filter-year');
         const months = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
@@ -460,7 +483,14 @@
     function setUser(u) { curUser = u; localStorage.setItem('f_last_user', u); ['Lukáš', 'Zdenka'].forEach(user => { const btn = document.getElementById(`u-${user}`); if(btn) btn.className = user === u ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }); }
     function setType(t) { curType = t; document.getElementById('t-ex').className = t === 'expense' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-red-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; document.getElementById('t-in').className = t === 'income' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }
     
-    window.onload = () => { initTimeFilters(); renderList(); renderCatGrid(); updateSyncUI('ok'); syncCategories('pull'); };
+    window.onload = () => { 
+        initTimeFilters(); 
+        renderList(); 
+        renderCatGrid(); 
+        updateSyncUI('ok'); 
+        syncCategories('pull'); 
+        syncTransactions('pull'); // Pri starte stiahne vsetky vydavky z cloudu
+    };
 </script>
 </body>
 </html>
