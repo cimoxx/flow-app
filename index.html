@@ -228,7 +228,6 @@
 <script>
     if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
 
-    // TVOJA AKTUALIZOVANÁ URL
     const GOOGLE_URL = 'https://script.google.com/macros/s/AKfycbybTaD_vfOjOooWjKEHY7_wJxrvlSaYbqRqQM8OO_Q6VyV9V-BLkOg8f4Esu74X5sSFfQ/exec';
     
     let db = JSON.parse(localStorage.getItem('f_db_v20')) || [];
@@ -270,7 +269,6 @@
                     const queuedIds = syncQueue.map(q => String(q.id));
                     db = cloudData.map(c => {
                         const local = db.find(l => String(l.id) === String(c.id));
-                        // Ak máme lokálnu verziu v rade na odoslanie, neprepíšeme ju starou z cloudu
                         if (queuedIds.includes(String(c.id)) && local) return local;
                         return c;
                     });
@@ -303,13 +301,18 @@
             entryIdInput.value = "";
             document.getElementById('f-date').valueAsDate = new Date();
             setUser(localStorage.getItem('f_last_user') || 'Lukáš'); setType('expense');
+            
+            // NAČÍTANIE POSLEDNEJ KATEGÓRIE A PODKATEGÓRIE
             const lastCat = localStorage.getItem('f_last_cat');
             const lastSub = localStorage.getItem('f_last_sub');
             let catToSelect = lastCat || (categories[0]?.id || '');
             selectCat(catToSelect);
+            
             if(lastSub) {
                 const cat = categories.find(c => c.id === catToSelect);
-                if(cat && cat.subs.includes(lastSub)) setTimeout(() => selectSub(lastSub), 10);
+                if(cat && cat.subs.includes(lastSub)) {
+                    setTimeout(() => selectSub(lastSub), 10);
+                }
             }
             document.getElementById('del-btn').classList.add('hidden');
         }
@@ -332,6 +335,10 @@
             type: curType, note: document.getElementById('f-note').value, 
             processed: currentProcessed, user: curUser, action: 'save' 
         };
+
+        // ULOŽENIE POSLEDNEJ VOĽBY PRE NABUDÚCE
+        if (selectedCat) localStorage.setItem('f_last_cat', selectedCat);
+        if (selectedSub) localStorage.setItem('f_last_sub', selectedSub);
 
         const idx = db.findIndex(x => String(x.id) === String(id));
         if (idx > -1) { db[idx] = entry; } else { db.push(entry); }
@@ -448,10 +455,7 @@
         }); 
         
         if (updatedEntry) {
-            syncQueue.push({ 
-                ...updatedEntry, 
-                action: 'save' 
-            }); 
+            syncQueue.push({ ...updatedEntry, action: 'save' }); 
             saveData(false); 
             renderList(); 
             processSyncQueue();
