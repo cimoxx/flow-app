@@ -228,6 +228,7 @@
 <script>
     if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
 
+    // TVOJA AKTUALIZOVANÁ URL
     const GOOGLE_URL = 'https://script.google.com/macros/s/AKfycbzWv6m51jePK_ousGb3vZltbhPlHdUw8ump8uXHsnulyOQeFV2b_Htr-k5oZfxcyexKcg/exec';
     
     let db = JSON.parse(localStorage.getItem('f_db_v20')) || [];
@@ -249,7 +250,12 @@
         if (syncQueue.length === 0 || isSyncing) { updateSyncUI('ok'); return; } 
         isSyncing = true; updateSyncUI('syncing'); 
         while (syncQueue.length > 0) { 
-            try { await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(syncQueue[0]) }); syncQueue.shift(); saveData(false); updateSyncUI('syncing'); } catch (e) { break; } 
+            try { 
+                await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(syncQueue[0]) }); 
+                syncQueue.shift(); 
+                saveData(false); 
+                updateSyncUI('syncing'); 
+            } catch (e) { break; } 
         } 
         isSyncing = false; updateSyncUI('ok'); 
     }
@@ -261,10 +267,10 @@
                 const res = await fetch(GOOGLE_URL + "?get=transactions"); 
                 const cloudData = await res.json(); 
                 if (Array.isArray(cloudData)) { 
-                    // POZOR: Ponechávame lokálny stav 'processed' pre tie, ktoré sú v syncQueue, aby sa neprepísali starými dátami
                     const queuedIds = syncQueue.map(q => String(q.id));
                     db = cloudData.map(c => {
                         const local = db.find(l => String(l.id) === String(c.id));
+                        // Ak máme lokálnu verziu v rade na odoslanie, neprepíšeme ju starou z cloudu
                         if (queuedIds.includes(String(c.id)) && local) return local;
                         return c;
                     });
@@ -316,7 +322,6 @@
         let id = existingId || 'ID-' + Date.now();
         const cleanDate = document.getElementById('f-date').value;
         
-        // Zisťujeme aktuálny stav 'processed' z lokálnej DB, aby sme ho neprepísali na false
         let currentProcessed = false;
         const localRecord = db.find(x => String(x.id) === String(id));
         if (localRecord) currentProcessed = localRecord.processed;
@@ -327,9 +332,6 @@
             type: curType, note: document.getElementById('f-note').value, 
             processed: currentProcessed, user: curUser, action: 'save' 
         };
-
-        localStorage.setItem('f_last_cat', selectedCat);
-        localStorage.setItem('f_last_sub', selectedSub);
 
         const idx = db.findIndex(x => String(x.id) === String(id));
         if (idx > -1) { db[idx] = entry; } else { db.push(entry); }
@@ -436,7 +438,6 @@
     function toggleStatusFilter() { currentStatusFilter = (currentStatusFilter === 'unprocessed') ? 'all' : 'unprocessed'; document.getElementById('ui-toggle').classList.toggle('all-active', currentStatusFilter === 'all'); renderList(); }
     
     function toggleProcessed(id) { 
-        // 1. Nájdeme záznam a zmeníme mu stav lokálne
         let updatedEntry = null;
         db = db.map(x => {
             if (String(x.id) === String(id)) {
@@ -447,10 +448,8 @@
         }); 
         
         if (updatedEntry) {
-            // 2. Pridáme do synchronizačnej rady s aktuálnymi dátami
             syncQueue.push({ 
                 ...updatedEntry, 
-                date: updatedEntry.date.split('T')[0], 
                 action: 'save' 
             }); 
             saveData(false); 
