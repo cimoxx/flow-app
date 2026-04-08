@@ -194,16 +194,11 @@
 
 <div id="settings-screen" class="fixed inset-0 bg-white dark:bg-slate-900 z-50 hidden p-6 max-w-md mx-auto overflow-y-auto pb-24">
     <div id="settings-home">
-        <div class="flex items-center gap-4 mb-6">
-            <button onclick="showScreen('home')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button>
-            <h2 class="text-xl font-extrabold">Nastavenia</h2>
-        </div>
-        
+        <div class="flex items-center gap-4 mb-6"><button onclick="showScreen('home')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 class="text-xl font-extrabold">Nastavenia</h2></div>
         <div class="flex gap-2 mb-6">
             <button onclick="manualSync()" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-extrabold text-[9px] uppercase shadow-sm">Sync Dáta</button>
             <button onclick="syncCategories('pull')" class="flex-1 py-3 bg-slate-800 text-white rounded-xl font-extrabold text-[9px] uppercase shadow-sm">Sync Kategórie</button>
         </div>
-
         <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl mb-4 border border-slate-200 dark:border-slate-700">
             <div class="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest text-center">Nová kategória</div>
             <div class="flex gap-2">
@@ -211,10 +206,8 @@
                 <button onclick="addCategory()" class="bg-emerald-500 text-white px-4 rounded-xl font-extrabold text-[9px] uppercase">Pridať</button>
             </div>
         </div>
-
         <div id="manage-cats-list" class="space-y-2 mb-8"></div>
     </div>
-
     <div id="settings-cat-detail" class="hidden">
         <div class="flex items-center gap-4 mb-6">
             <button onclick="closeCatDetail()" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button>
@@ -241,65 +234,30 @@
     let syncQueue = JSON.parse(localStorage.getItem('f_sync_q_v20')) || [];
     let categories = JSON.parse(localStorage.getItem('f_cats_v20')) || [];
     let curUser = localStorage.getItem('f_last_user') || 'Lukáš';
-    let lastCat = localStorage.getItem('f_last_cat') || '';
-    let lastSub = localStorage.getItem('f_last_sub') || '';
-
+    
     let curType = 'expense', selectedCat = '', selectedSub = '', activeCategoryFilter = null, isSyncing = false;
     let currentStatusFilter = 'unprocessed', activeSettingsCat = null;
 
     function updateSyncUI(status) {
         const dot = document.getElementById('sync-dot');
         const text = document.getElementById('sync-text');
-        if (status === 'syncing') {
-            dot.className = "w-2 h-2 bg-blue-400 animate-pulse rounded-full";
-            text.innerText = "...";
-        } else {
-            dot.className = syncQueue.length > 0 ? "w-2 h-2 bg-amber-500 rounded-full" : "w-2 h-2 bg-emerald-500 rounded-full";
-            text.innerText = syncQueue.length > 0 ? syncQueue.length : "OK";
-        }
-    }
-
-    function isProcessed(val) {
-        if (typeof val === 'boolean') return val;
-        if (typeof val === 'string') {
-            const v = val.toLowerCase().trim();
-            return v === 'true' || v === 'áno' || v === 'ano' || v === 'yes' || v === '1';
-        }
-        return !!val;
+        if (status === 'syncing') { dot.className = "w-2 h-2 bg-blue-400 animate-pulse rounded-full"; text.innerText = "..."; }
+        else { if (syncQueue.length > 0) { dot.className = "w-2 h-2 bg-amber-500 rounded-full"; text.innerText = syncQueue.length; } else { dot.className = "w-2 h-2 bg-emerald-500 rounded-full"; text.innerText = "OK"; } }
     }
 
     async function processSyncQueue() { 
         if (syncQueue.length === 0 || isSyncing) { updateSyncUI('ok'); return; } 
-        isSyncing = true; 
-        updateSyncUI('syncing'); 
+        isSyncing = true; updateSyncUI('syncing'); 
         while (syncQueue.length > 0) { 
-            try { 
-                await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(syncQueue[0]) }); 
-                syncQueue.shift(); 
-                saveData(false);
-                updateSyncUI('syncing');
-            } catch (e) { break; } 
+            try { await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(syncQueue[0]) }); syncQueue.shift(); saveData(false); updateSyncUI('syncing'); } catch (e) { break; } 
         } 
-        isSyncing = false; 
-        updateSyncUI('ok'); 
+        isSyncing = false; updateSyncUI('ok'); 
     }
 
     async function syncTransactions(action = 'pull') {
         if (action === 'pull') {
             updateSyncUI('syncing');
-            try {
-                const res = await fetch(GOOGLE_URL + "?get=transactions");
-                const cloudData = await res.json();
-                if (Array.isArray(cloudData)) {
-                    db = cloudData.map(item => ({
-                        ...item,
-                        amount: parseFloat(item.amount) || 0,
-                        processed: isProcessed(item.processed)
-                    }));
-                    localStorage.setItem('f_db_v20', JSON.stringify(db));
-                    renderList();
-                }
-            } catch (e) { console.error("Sync error:", e); }
+            try { const res = await fetch(GOOGLE_URL + "?get=transactions"); const cloudData = await res.json(); if (Array.isArray(cloudData)) { db = cloudData; localStorage.setItem('f_db_v20', JSON.stringify(db)); renderList(); } } catch (e) { console.error("Sync error:", e); }
             updateSyncUI('ok');
         }
     }
@@ -315,7 +273,7 @@
             const i = db.find(x => String(x.id) === String(id));
             entryIdInput.value = i.id; amountInput.value = i.amount;
             document.getElementById('f-note').value = i.note; 
-            document.getElementById('f-date').value = (i.date || '').split('T')[0];
+            document.getElementById('f-date').value = i.date.split('T')[0];
             setUser(i.user || 'Lukáš'); setType(i.type); 
             selectCat(i.category);
             if(i.sub) setTimeout(() => selectSub(i.sub), 10);
@@ -325,8 +283,18 @@
             entryIdInput.value = "";
             document.getElementById('f-date').valueAsDate = new Date();
             setUser(localStorage.getItem('f_last_user') || 'Lukáš'); setType('expense');
+            
+            // NACITANIE POSLEDNEJ POUZITEJ KATEGORIE A PODKATEGORIE
+            const lastCat = localStorage.getItem('f_last_cat');
+            const lastSub = localStorage.getItem('f_last_sub');
+            
             let catToSelect = lastCat || (categories[0]?.id || '');
             selectCat(catToSelect);
+            
+            if(lastSub) {
+                const cat = categories.find(c => c.id === catToSelect);
+                if(cat && cat.subs.includes(lastSub)) setTimeout(() => selectSub(lastSub), 10);
+            }
             document.getElementById('del-btn').classList.add('hidden');
         }
         setTimeout(() => { amountInput.focus(); amountInput.select(); }, 300);
@@ -339,56 +307,29 @@
         const cleanDate = document.getElementById('f-date').value;
 
         const entry = { 
-            id: id, 
-            date: cleanDate, 
-            category: selectedCat, 
-            sub: selectedSub, 
+            id: id, date: cleanDate, category: selectedCat, sub: selectedSub, 
             amount: parseFloat(document.getElementById('f-amount').value), 
-            type: curType, 
-            note: document.getElementById('f-note').value, 
-            processed: false,
-            user: curUser,
-            action: 'save' 
+            type: curType, note: document.getElementById('f-note').value, 
+            processed: false, user: curUser, action: 'save' 
         };
+
+        // ULOZENIE POSLEDNEJ POUZITEJ KATEGORIE A PODKATEGORIE
+        localStorage.setItem('f_last_cat', selectedCat);
+        localStorage.setItem('f_last_sub', selectedSub);
 
         const idx = db.findIndex(x => String(x.id) === String(id));
         if (idx > -1) { entry.processed = db[idx].processed; db[idx] = entry; } else { db.push(entry); }
         syncQueue.push(entry); saveData(false); closeModal(); renderList(); processSyncQueue();
     }
 
-    // OPRAVENÉ: Mazanie záznamov
-    function handleDelete() {
-        const id = document.getElementById('entry-id').value;
-        if(id && confirm('Naozaj zmazať tento záznam?')) {
-            syncQueue.push({ id: id, action: 'delete' });
-            db = db.filter(x => String(x.id) !== String(id));
-            saveData(false);
-            closeModal();
-            renderList();
-            processSyncQueue();
-        }
-    }
+    function handleDelete() { const id = document.getElementById('entry-id').value; if(id && confirm('Zmazať?')) { syncQueue.push({ id: id, action: 'delete' }); db = db.filter(x => String(x.id) !== String(id)); saveData(false); closeModal(); renderList(); processSyncQueue(); } }
 
-    function toggleProcessed(id) { 
-        db = db.map(x => {
-            if (String(x.id) === String(id)) {
-                const newStatus = !x.processed;
-                const updated = {...x, processed: newStatus};
-                syncQueue.push({...updated, action: 'save'});
-                return updated;
-            }
-            return x;
-        });
-        saveData(false); renderList(); processSyncQueue(); 
-    }
-
-    // OPRAVENÉ: Správa kategórií
     function renderManageCats() {
         document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `
             <div class="flex items-center gap-2">
                 <div onclick="openCatDetail(${i})" class="flex-1 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between shadow-sm cursor-pointer active:scale-[0.98] transition-all">
                     <div class="font-extrabold text-sm uppercase">${c.id}</div>
-                    <div class="text-[9px] text-slate-300 uppercase font-black tracking-tighter">${c.subs ? c.subs.length : 0} subs</div>
+                    <div class="text-[9px] text-slate-300 uppercase font-black tracking-tighter">${c.subs.length} subs</div>
                 </div>
                 <div class="flex flex-col gap-1">
                     <button onclick="moveCat(${i}, -1)" class="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-up" class="w-3 h-3"></i></button>
@@ -398,24 +339,9 @@
         lucide.createIcons();
     }
 
-    function openCatDetail(index) {
-        activeSettingsCat = index;
-        document.getElementById('settings-home').classList.add('hidden');
-        document.getElementById('settings-cat-detail').classList.remove('hidden');
-        document.getElementById('detail-cat-title').innerText = categories[index].id;
-        renderManageSubs();
-    }
-
-    function closeCatDetail() {
-        activeSettingsCat = null;
-        document.getElementById('settings-cat-detail').classList.add('hidden');
-        document.getElementById('settings-home').classList.remove('hidden');
-        renderManageCats();
-    }
-
+    function openCatDetail(index) { activeSettingsCat = index; document.getElementById('settings-home').classList.add('hidden'); document.getElementById('settings-cat-detail').classList.remove('hidden'); document.getElementById('detail-cat-title').innerText = categories[index].id; renderManageSubs(); }
     function renderManageSubs() {
         const cat = categories[activeSettingsCat];
-        if(!cat.subs) cat.subs = [];
         document.getElementById('manage-subs-list').innerHTML = cat.subs.map((s, i) => `
             <div class="flex items-center gap-2">
                 <div class="flex-1 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between border border-transparent dark:border-slate-700">
@@ -433,29 +359,43 @@
     function moveCat(i, dir) { if((dir === -1 && i > 0) || (dir === 1 && i < categories.length - 1)) { const temp = categories[i]; categories[i] = categories[i + dir]; categories[i + dir] = temp; saveData(true); renderManageCats(); renderCatGrid(); } }
     function moveSub(i, dir) { const subs = categories[activeSettingsCat].subs; if((dir === -1 && i > 0) || (dir === 1 && i < subs.length - 1)) { const temp = subs[i]; subs[i] = subs[i + dir]; subs[i + dir] = temp; saveData(true); renderManageSubs(); } }
     function addCategory() { let n = document.getElementById('new-cat-name').value.trim(); if(n) { categories.push({id: n, icon: 'layers', subs: []}); document.getElementById('new-cat-name').value = ''; saveData(true); renderManageCats(); renderCatGrid(); } }
-    function addSubCategory() { let n = document.getElementById('new-sub-name').value.trim(); if(n && activeSettingsCat !== null) { if(!categories[activeSettingsCat].subs) categories[activeSettingsCat].subs = []; categories[activeSettingsCat].subs.push(n); document.getElementById('new-sub-name').value = ''; saveData(true); renderManageSubs(); } }
+    function addSubCategory() { let n = document.getElementById('new-sub-name').value.trim(); if(n && activeSettingsCat !== null) { categories[activeSettingsCat].subs.push(n); document.getElementById('new-sub-name').value = ''; saveData(true); renderManageSubs(); } }
     function deleteSub(index) { if(confirm('Zmazať podkategóriu?')) { categories[activeSettingsCat].subs.splice(index, 1); saveData(true); renderManageSubs(); } }
     function deleteActiveCat() { if(confirm(`Zmazať kategóriu ${categories[activeSettingsCat].id}?`)) { categories.splice(activeSettingsCat, 1); saveData(true); closeCatDetail(); renderCatGrid(); } }
+
+    function selectCat(id) { 
+        selectedCat = id; selectedSub = ''; 
+        document.querySelectorAll('.cat-tile').forEach(el => el.classList.toggle('selected', el.dataset.id === id)); 
+        const cat = categories.find(c => c.id === id); 
+        if(cat && cat.subs && cat.subs.length > 0) { 
+            document.getElementById('sub-section').classList.remove('hidden'); 
+            document.getElementById('sub-grid').innerHTML = cat.subs.map(s => `<button type="button" onclick="selectSub('${s}')" data-sub="${s}" class="sub-chip px-3 py-2 rounded-xl font-extrabold uppercase shadow-sm">${s}</button>`).join(''); 
+        } else { document.getElementById('sub-section').classList.add('hidden'); } 
+    }
+
+    function selectSub(s) { selectedSub = s; document.querySelectorAll('.sub-chip').forEach(el => el.classList.toggle('active', el.dataset.sub === s)); }
+    function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+    function closeCatDetail() { activeSettingsCat = null; document.getElementById('settings-cat-detail').classList.add('hidden'); document.getElementById('settings-home').classList.remove('hidden'); renderManageCats(); }
+    function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s === 'settings') { activeSettingsCat = null; closeCatDetail(); renderManageCats(); } else renderList(); }
+    
+    async function syncCategories(action = 'push') {
+        updateSyncUI('syncing');
+        if (action === 'push') { try { await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'sync_categories', categories: categories }) }); } catch (e) { } }
+        else { try { const res = await fetch(GOOGLE_URL + "?get=categories"); const cloudData = await res.json(); if(Array.isArray(cloudData)) { categories = cloudData; localStorage.setItem('f_cats_v20', JSON.stringify(categories)); renderCatGrid(); if(!document.getElementById('settings-screen').classList.contains('hidden') && activeSettingsCat === null) renderManageCats(); } } catch (e) { } }
+        updateSyncUI('ok');
+    }
 
     function renderList() {
         const list = document.getElementById('transaction-list');
         const selMonth = parseInt(document.getElementById('filter-month').value);
         const selYear = parseInt(document.getElementById('filter-year').value);
-        
-        let filtered = db.filter(d => { 
-            const dt = new Date(d.date); 
-            return dt.getMonth() === selMonth && dt.getFullYear() === selYear; 
-        });
-
-        let summaryData = currentStatusFilter === 'unprocessed' ? filtered.filter(d => !d.processed) : filtered;
+        let filtered = db.filter(d => { const dt = new Date(d.date); return dt.getMonth() === selMonth && dt.getFullYear() === selYear; });
+        let summaryData = filtered; if(currentStatusFilter === 'unprocessed') summaryData = summaryData.filter(d => !d.processed);
         const sums = {}; summaryData.forEach(item => { if (item.type === 'expense') sums[item.category] = (sums[item.category] || 0) + item.amount; });
         renderSummary(sums);
-
         if(currentStatusFilter === 'unprocessed') filtered = filtered.filter(d => !d.processed);
         if(activeCategoryFilter) filtered = filtered.filter(d => d.category === activeCategoryFilter);
-        
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
-        
         list.innerHTML = filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(item => `
             <div class="transaction-item p-4 flex items-center justify-between ${item.processed ? 'processed' : ''}">
                 <div class="flex-1" onclick="openModal('${item.id}')">
@@ -465,37 +405,39 @@
                     </div>
                     <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${item.user || 'Lukáš'} ${item.note ? '• '+item.note : ''}</div>
                 </div>
-                <button onclick="toggleProcessed('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}">
-                    <i data-lucide="check" class="w-4 h-4"></i>
-                </button>
+                <button onclick="toggleProcessed('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}"><i data-lucide="check" class="w-4 h-4"></i></button>
             </div>`).join('');
         updateTotals(); lucide.createIcons();
     }
 
-    function renderSummary(sums) {
-        const container = document.getElementById('category-summary');
-        container.innerHTML = Object.keys(sums).sort((a,b) => sums[b] - sums[a]).map(cat => `
-            <div onclick="toggleFilter('${cat}')" class="summary-card flex-shrink-0 px-3 py-2 rounded-xl cursor-pointer ${activeCategoryFilter === cat ? 'active-filter' : ''}">
-                <div class="text-[7.5px] font-black ${activeCategoryFilter === cat ? 'text-amber-500' : 'text-slate-400'} uppercase truncate tracking-wider">${cat}</div>
-                <div class="text-[10px] font-extrabold">${sums[cat].toFixed(2)}€</div>
-            </div>`).join('');
-    }
+    function renderSummary(sums) { const container = document.getElementById('category-summary'); container.innerHTML = Object.keys(sums).sort((a,b) => sums[b] - sums[a]).map(cat => ` <div onclick="toggleFilter('${cat}')" class="summary-card flex-shrink-0 px-3 py-2 rounded-xl cursor-pointer ${activeCategoryFilter === cat ? 'active-filter' : ''}"> <div class="text-[7.5px] font-black ${activeCategoryFilter === cat ? 'text-amber-500' : 'text-slate-400'} uppercase truncate tracking-wider">${cat}</div> <div class="text-[10px] font-extrabold">${sums[cat].toFixed(2)}€</div> </div>`).join(''); }
     function renderCatGrid() { document.getElementById('cat-grid').innerHTML = categories.map(c => `<button type="button" onclick="selectCat('${c.id}')" data-id="${c.id}" class="cat-tile flex flex-col items-center justify-center p-1 rounded-2xl shadow-sm"><i data-lucide="${c.icon || 'layers'}"></i><span class="truncate w-full">${c.id}</span></button>`).join(''); lucide.createIcons(); }
-    function selectCat(id) { selectedCat = id; selectedSub = ''; document.querySelectorAll('.cat-tile').forEach(el => el.classList.toggle('selected', el.dataset.id === id)); const cat = categories.find(c => c.id === id); if(cat && cat.subs?.length > 0) { document.getElementById('sub-section').classList.remove('hidden'); document.getElementById('sub-grid').innerHTML = cat.subs.map(s => `<button type="button" onclick="selectSub('${s}')" data-sub="${s}" class="sub-chip px-3 py-2 rounded-xl font-extrabold uppercase shadow-sm">${s}</button>`).join(''); } else { document.getElementById('sub-section').classList.add('hidden'); } }
-    function selectSub(s) { selectedSub = s; document.querySelectorAll('.sub-chip').forEach(el => el.classList.toggle('active', el.dataset.sub === s)); }
     function toggleFilter(cat) { activeCategoryFilter = (activeCategoryFilter === cat) ? null : cat; renderList(); }
     function resetCategoryFilter() { activeCategoryFilter = null; renderList(); }
     function toggleStatusFilter() { currentStatusFilter = (currentStatusFilter === 'unprocessed') ? 'all' : 'unprocessed'; document.getElementById('ui-toggle').classList.toggle('all-active', currentStatusFilter === 'all'); renderList(); }
-    function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
-    function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s === 'settings') { activeSettingsCat = null; renderManageCats(); } else renderList(); }
+    
+    function toggleProcessed(id) { 
+        db = db.map(x => String(x.id) === String(id) ? {...x, processed: !x.processed} : x); 
+        const updatedEntry = db.find(x => String(x.id) === String(id));
+        syncQueue.push({ id: updatedEntry.id, date: updatedEntry.date.split('T')[0], category: updatedEntry.category, sub: updatedEntry.sub, amount: updatedEntry.amount, type: updatedEntry.type, note: updatedEntry.note, processed: updatedEntry.processed, action: 'save' }); 
+        saveData(false); renderList(); processSyncQueue(); 
+    }
+    
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
-    function updateTotals() { const bal = db.reduce((s,x) => x.type === 'income' ? s + x.amount : s - x.amount, 0); document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; }
+    function updateTotals() { const bal = db.reduce((s,x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; }
     function manualSync() { syncCategories('pull'); syncTransactions('pull'); processSyncQueue(); }
-    function initTimeFilters() { const mSelect = document.getElementById('filter-month'), ySelect = document.getElementById('filter-year'); const months = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December']; const now = new Date(); mSelect.innerHTML = months.map((m, i) => `<option value="${i}" ${i === now.getMonth() ? 'selected' : ''}>${m}</option>`).join(''); const years = [...new Set([now.getFullYear(), 2025, 2024])].sort((a,b) => b-a); ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join(''); }
+
+    function initTimeFilters() { 
+        const mSelect = document.getElementById('filter-month'), ySelect = document.getElementById('filter-year');
+        const months = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+        const now = new Date(); 
+        mSelect.innerHTML = months.map((m, i) => `<option value="${i}" ${i === now.getMonth() ? 'selected' : ''}>${m}</option>`).join('');
+        const years = [...new Set([now.getFullYear(), ...db.map(x => new Date(x.date).getFullYear())])].sort((a,b) => b-a);
+        ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+    }
     function setUser(u) { curUser = u; localStorage.setItem('f_last_user', u); ['Lukáš', 'Zdenka'].forEach(user => { const btn = document.getElementById(`u-${user}`); if(btn) btn.className = user === u ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }); }
     function setType(t) { curType = t; document.getElementById('t-ex').className = t === 'expense' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-red-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; document.getElementById('t-in').className = t === 'income' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }
-    async function syncCategories(action = 'push') { if (action === 'push') { try { await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'sync_categories', categories: categories }) }); } catch (e) {} } else { try { const res = await fetch(GOOGLE_URL + "?get=categories"); const cloudData = await res.json(); if(Array.isArray(cloudData)) { categories = cloudData; localStorage.setItem('f_cats_v20', JSON.stringify(categories)); renderCatGrid(); if(!document.getElementById('settings-screen').classList.contains('hidden')) renderManageCats(); } } catch (e) {} } }
-
+    
     window.onload = () => { initTimeFilters(); renderList(); renderCatGrid(); updateSyncUI('ok'); syncCategories('pull'); syncTransactions('pull'); };
 </script>
 </body>
