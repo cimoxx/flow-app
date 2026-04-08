@@ -194,14 +194,41 @@
 
 <div id="settings-screen" class="fixed inset-0 bg-white dark:bg-slate-900 z-50 hidden p-6 max-w-md mx-auto overflow-y-auto pb-24">
     <div id="settings-home">
-        <div class="flex items-center gap-4 mb-6"><button onclick="showScreen('home')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 class="text-xl font-extrabold">Nastavenia</h2></div>
+        <div class="flex items-center gap-4 mb-6">
+            <button onclick="showScreen('home')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button>
+            <h2 class="text-xl font-extrabold">Nastavenia</h2>
+        </div>
         
         <div class="flex gap-2 mb-6">
             <button onclick="manualSync()" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-extrabold text-[9px] uppercase shadow-sm">Sync Dáta</button>
             <button onclick="syncCategories('pull')" class="flex-1 py-3 bg-slate-800 text-white rounded-xl font-extrabold text-[9px] uppercase shadow-sm">Sync Kategórie</button>
         </div>
 
+        <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl mb-4 border border-slate-200 dark:border-slate-700">
+            <div class="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest text-center">Nová kategória</div>
+            <div class="flex gap-2">
+                <input type="text" id="new-cat-name" placeholder="Názov..." class="flex-1 p-3.5 rounded-xl text-sm outline-none">
+                <button onclick="addCategory()" class="bg-emerald-500 text-white px-4 rounded-xl font-extrabold text-[9px] uppercase">Pridať</button>
+            </div>
+        </div>
+
         <div id="manage-cats-list" class="space-y-2 mb-8"></div>
+    </div>
+
+    <div id="settings-cat-detail" class="hidden">
+        <div class="flex items-center gap-4 mb-6">
+            <button onclick="closeCatDetail()" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button>
+            <h2 id="detail-cat-title" class="text-xl font-extrabold">Podkategórie</h2>
+        </div>
+        <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl mb-4 border border-slate-200 dark:border-slate-700">
+            <div class="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest text-center">Nová podkategória</div>
+            <div class="flex gap-2">
+                <input type="text" id="new-sub-name" placeholder="Názov..." class="flex-1 p-3.5 rounded-xl text-sm outline-none">
+                <button onclick="addSubCategory()" class="bg-emerald-500 text-white px-4 rounded-xl font-extrabold text-[9px] uppercase">Pridať</button>
+            </div>
+        </div>
+        <div id="manage-subs-list" class="space-y-2"></div>
+        <button onclick="deleteActiveCat()" class="w-full mt-10 text-red-400 text-[10px] font-black uppercase tracking-widest py-4 border border-red-100 dark:border-red-900/30 rounded-2xl">Zmazať celú kategóriu</button>
     </div>
 </div>
 
@@ -232,7 +259,6 @@
         }
     }
 
-    // OPRAVA: Funkcia na overenie stavu "zapisane"
     function isProcessed(val) {
         if (typeof val === 'boolean') return val;
         if (typeof val === 'string') {
@@ -265,11 +291,10 @@
                 const res = await fetch(GOOGLE_URL + "?get=transactions");
                 const cloudData = await res.json();
                 if (Array.isArray(cloudData)) {
-                    // Prevedieme dáta z cloudu na korektné typy
                     db = cloudData.map(item => ({
                         ...item,
                         amount: parseFloat(item.amount) || 0,
-                        processed: isProcessed(item.processed) // OPRAVA: striktný check
+                        processed: isProcessed(item.processed)
                     }));
                     localStorage.setItem('f_db_v20', JSON.stringify(db));
                     renderList();
@@ -331,6 +356,19 @@
         syncQueue.push(entry); saveData(false); closeModal(); renderList(); processSyncQueue();
     }
 
+    // OPRAVENÉ: Mazanie záznamov
+    function handleDelete() {
+        const id = document.getElementById('entry-id').value;
+        if(id && confirm('Naozaj zmazať tento záznam?')) {
+            syncQueue.push({ id: id, action: 'delete' });
+            db = db.filter(x => String(x.id) !== String(id));
+            saveData(false);
+            closeModal();
+            renderList();
+            processSyncQueue();
+        }
+    }
+
     function toggleProcessed(id) { 
         db = db.map(x => {
             if (String(x.id) === String(id)) {
@@ -344,6 +382,61 @@
         saveData(false); renderList(); processSyncQueue(); 
     }
 
+    // OPRAVENÉ: Správa kategórií
+    function renderManageCats() {
+        document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `
+            <div class="flex items-center gap-2">
+                <div onclick="openCatDetail(${i})" class="flex-1 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between shadow-sm cursor-pointer active:scale-[0.98] transition-all">
+                    <div class="font-extrabold text-sm uppercase">${c.id}</div>
+                    <div class="text-[9px] text-slate-300 uppercase font-black tracking-tighter">${c.subs ? c.subs.length : 0} subs</div>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <button onclick="moveCat(${i}, -1)" class="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-up" class="w-3 h-3"></i></button>
+                    <button onclick="moveCat(${i}, 1)" class="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-down" class="w-3 h-3"></i></button>
+                </div>
+            </div>`).join('');
+        lucide.createIcons();
+    }
+
+    function openCatDetail(index) {
+        activeSettingsCat = index;
+        document.getElementById('settings-home').classList.add('hidden');
+        document.getElementById('settings-cat-detail').classList.remove('hidden');
+        document.getElementById('detail-cat-title').innerText = categories[index].id;
+        renderManageSubs();
+    }
+
+    function closeCatDetail() {
+        activeSettingsCat = null;
+        document.getElementById('settings-cat-detail').classList.add('hidden');
+        document.getElementById('settings-home').classList.remove('hidden');
+        renderManageCats();
+    }
+
+    function renderManageSubs() {
+        const cat = categories[activeSettingsCat];
+        if(!cat.subs) cat.subs = [];
+        document.getElementById('manage-subs-list').innerHTML = cat.subs.map((s, i) => `
+            <div class="flex items-center gap-2">
+                <div class="flex-1 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between border border-transparent dark:border-slate-700">
+                    <div class="font-bold text-xs uppercase">${s}</div>
+                    <button onclick="deleteSub(${i})" class="p-2 text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <button onclick="moveSub(${i}, -1)" class="p-1.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-up" class="w-2.5 h-2.5"></i></button>
+                    <button onclick="moveSub(${i}, 1)" class="p-1.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-down" class="w-2.5 h-2.5"></i></button>
+                </div>
+            </div>`).join('');
+        lucide.createIcons();
+    }
+
+    function moveCat(i, dir) { if((dir === -1 && i > 0) || (dir === 1 && i < categories.length - 1)) { const temp = categories[i]; categories[i] = categories[i + dir]; categories[i + dir] = temp; saveData(true); renderManageCats(); renderCatGrid(); } }
+    function moveSub(i, dir) { const subs = categories[activeSettingsCat].subs; if((dir === -1 && i > 0) || (dir === 1 && i < subs.length - 1)) { const temp = subs[i]; subs[i] = subs[i + dir]; subs[i + dir] = temp; saveData(true); renderManageSubs(); } }
+    function addCategory() { let n = document.getElementById('new-cat-name').value.trim(); if(n) { categories.push({id: n, icon: 'layers', subs: []}); document.getElementById('new-cat-name').value = ''; saveData(true); renderManageCats(); renderCatGrid(); } }
+    function addSubCategory() { let n = document.getElementById('new-sub-name').value.trim(); if(n && activeSettingsCat !== null) { if(!categories[activeSettingsCat].subs) categories[activeSettingsCat].subs = []; categories[activeSettingsCat].subs.push(n); document.getElementById('new-sub-name').value = ''; saveData(true); renderManageSubs(); } }
+    function deleteSub(index) { if(confirm('Zmazať podkategóriu?')) { categories[activeSettingsCat].subs.splice(index, 1); saveData(true); renderManageSubs(); } }
+    function deleteActiveCat() { if(confirm(`Zmazať kategóriu ${categories[activeSettingsCat].id}?`)) { categories.splice(activeSettingsCat, 1); saveData(true); closeCatDetail(); renderCatGrid(); } }
+
     function renderList() {
         const list = document.getElementById('transaction-list');
         const selMonth = parseInt(document.getElementById('filter-month').value);
@@ -354,7 +447,6 @@
             return dt.getMonth() === selMonth && dt.getFullYear() === selYear; 
         });
 
-        // Sumár rátame z aktuálne zobrazených (nových alebo všetkých podľa filtra)
         let summaryData = currentStatusFilter === 'unprocessed' ? filtered.filter(d => !d.processed) : filtered;
         const sums = {}; summaryData.forEach(item => { if (item.type === 'expense') sums[item.category] = (sums[item.category] || 0) + item.amount; });
         renderSummary(sums);
@@ -380,7 +472,6 @@
         updateTotals(); lucide.createIcons();
     }
 
-    // --- ZVYŠOK POMOCNÝCH FUNKCIÍ OSTÁVA ROVNAKÝ ---
     function renderSummary(sums) {
         const container = document.getElementById('category-summary');
         container.innerHTML = Object.keys(sums).sort((a,b) => sums[b] - sums[a]).map(cat => `
@@ -396,14 +487,14 @@
     function resetCategoryFilter() { activeCategoryFilter = null; renderList(); }
     function toggleStatusFilter() { currentStatusFilter = (currentStatusFilter === 'unprocessed') ? 'all' : 'unprocessed'; document.getElementById('ui-toggle').classList.toggle('all-active', currentStatusFilter === 'all'); renderList(); }
     function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
-    function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s !== 'settings') renderList(); }
+    function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s === 'settings') { activeSettingsCat = null; renderManageCats(); } else renderList(); }
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
     function updateTotals() { const bal = db.reduce((s,x) => x.type === 'income' ? s + x.amount : s - x.amount, 0); document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; }
     function manualSync() { syncCategories('pull'); syncTransactions('pull'); processSyncQueue(); }
-    function initTimeFilters() { const mSelect = document.getElementById('filter-month'), ySelect = document.getElementById('filter-year'); const months = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December']; const now = new Date(); mSelect.innerHTML = months.map((m, i) => `<option value="${i}" ${i === now.getMonth() ? 'selected' : ''}>${m}</option>`).join(''); const years = [now.getFullYear(), 2025, 2024]; ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join(''); }
+    function initTimeFilters() { const mSelect = document.getElementById('filter-month'), ySelect = document.getElementById('filter-year'); const months = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December']; const now = new Date(); mSelect.innerHTML = months.map((m, i) => `<option value="${i}" ${i === now.getMonth() ? 'selected' : ''}>${m}</option>`).join(''); const years = [...new Set([now.getFullYear(), 2025, 2024])].sort((a,b) => b-a); ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join(''); }
     function setUser(u) { curUser = u; localStorage.setItem('f_last_user', u); ['Lukáš', 'Zdenka'].forEach(user => { const btn = document.getElementById(`u-${user}`); if(btn) btn.className = user === u ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }); }
     function setType(t) { curType = t; document.getElementById('t-ex').className = t === 'expense' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-red-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; document.getElementById('t-in').className = t === 'income' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }
-    async function syncCategories(action = 'push') { if (action === 'push') { try { await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'sync_categories', categories: categories }) }); } catch (e) {} } else { try { const res = await fetch(GOOGLE_URL + "?get=categories"); const cloudData = await res.json(); if(Array.isArray(cloudData)) { categories = cloudData; localStorage.setItem('f_cats_v20', JSON.stringify(categories)); renderCatGrid(); } } catch (e) {} } }
+    async function syncCategories(action = 'push') { if (action === 'push') { try { await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'sync_categories', categories: categories }) }); } catch (e) {} } else { try { const res = await fetch(GOOGLE_URL + "?get=categories"); const cloudData = await res.json(); if(Array.isArray(cloudData)) { categories = cloudData; localStorage.setItem('f_cats_v20', JSON.stringify(categories)); renderCatGrid(); if(!document.getElementById('settings-screen').classList.contains('hidden')) renderManageCats(); } } catch (e) {} } }
 
     window.onload = () => { initTimeFilters(); renderList(); renderCatGrid(); updateSyncUI('ok'); syncCategories('pull'); syncTransactions('pull'); };
 </script>
