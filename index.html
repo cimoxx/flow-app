@@ -245,11 +245,9 @@
     let curType = 'expense', selectedCat = '', selectedSub = '', activeCategoryFilter = null, isSyncing = false;
     let currentStatusFilter = 'unprocessed', activeSettingsCat = null;
 
-    // INDIKATOR SYNCHRONIZACIE
     function updateSyncUI(status) {
         const dot = document.getElementById('sync-dot');
         const text = document.getElementById('sync-text');
-        
         if (status === 'syncing') {
             dot.className = "w-2 h-2 bg-blue-400 animate-pulse rounded-full";
             text.innerText = "...";
@@ -265,10 +263,7 @@
     }
 
     async function processSyncQueue() { 
-        if (syncQueue.length === 0 || isSyncing) {
-            updateSyncUI('ok');
-            return;
-        } 
+        if (syncQueue.length === 0 || isSyncing) { updateSyncUI('ok'); return; } 
         isSyncing = true; 
         updateSyncUI('syncing'); 
         while (syncQueue.length > 0) { 
@@ -299,7 +294,6 @@
         }
     }
 
-    // MODAL
     function openModal(id = null) {
         const overlay = document.getElementById('modal-overlay');
         const amountInput = document.getElementById('f-amount');
@@ -310,7 +304,9 @@
         if(id) {
             const i = db.find(x => String(x.id) === String(id));
             entryIdInput.value = i.id; amountInput.value = i.amount;
-            document.getElementById('f-note').value = i.note; document.getElementById('f-date').value = i.date;
+            document.getElementById('f-note').value = i.note; 
+            // Zabezpečíme, aby sa zobrazil iba čistý dátum v inpute
+            document.getElementById('f-date').value = i.date.split('T')[0];
             setUser(i.user || 'Lukáš'); setType(i.type); 
             selectCat(i.category);
             if(i.sub) setTimeout(() => selectSub(i.sub), 10);
@@ -336,17 +332,19 @@
         let existingId = document.getElementById('entry-id').value;
         let id = existingId || 'ID-' + Date.now();
         
-        // OPRAVENE PORADIE STLPCCOV PRE CLOUD: id datum kategoria Podkategória suma druh poznamka zapisane?
+        // OPRAVA: f-date.value vráti čistý YYYY-MM-DD reťazec. Žiaden čas.
+        const cleanDate = document.getElementById('f-date').value;
+
         const entry = { 
             id: id, 
-            date: document.getElementById('f-date').value, 
+            date: cleanDate, 
             category: selectedCat, 
             sub: selectedSub, 
             amount: parseFloat(document.getElementById('f-amount').value), 
             type: curType, 
             note: document.getElementById('f-note').value, 
             processed: false,
-            user: curUser, // user je interne metadata, v cloude podla tvojho zoznamu nie je explicitny stlpec
+            user: curUser,
             action: 'save' 
         };
 
@@ -360,7 +358,6 @@
 
     function handleDelete() { const id = document.getElementById('entry-id').value; if(id && confirm('Zmazať?')) { syncQueue.push({ id: id, action: 'delete' }); db = db.filter(x => String(x.id) !== String(id)); saveData(false); closeModal(); renderList(); processSyncQueue(); } }
 
-    // ADMIN
     function renderManageCats() {
         document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `
             <div class="flex items-center gap-2">
@@ -407,7 +404,6 @@
     function deleteSub(index) { if(confirm('Zmazať podkategóriu?')) { categories[activeSettingsCat].subs.splice(index, 1); saveData(true); renderManageSubs(); } }
     function deleteActiveCat() { if(confirm(`Zmazať kategóriu ${categories[activeSettingsCat].id}?`)) { categories.splice(activeSettingsCat, 1); saveData(true); closeCatDetail(); renderCatGrid(); } }
 
-    // CORE UI
     function selectCat(id) { 
         selectedCat = id; selectedSub = ''; 
         document.querySelectorAll('.cat-tile').forEach(el => el.classList.toggle('selected', el.dataset.id === id)); 
@@ -441,7 +437,10 @@
         const list = document.getElementById('transaction-list');
         const selMonth = parseInt(document.getElementById('filter-month').value);
         const selYear = parseInt(document.getElementById('filter-year').value);
-        let filtered = db.filter(d => { const dt = new Date(d.date); return dt.getMonth() === selMonth && dt.getFullYear() === selYear; });
+        let filtered = db.filter(d => { 
+            const dt = new Date(d.date); 
+            return dt.getMonth() === selMonth && dt.getFullYear() === selYear; 
+        });
         let summaryData = filtered; if(currentStatusFilter === 'unprocessed') summaryData = summaryData.filter(d => !d.processed);
         const sums = {}; summaryData.forEach(item => { if (item.type === 'expense') sums[item.category] = (sums[item.category] || 0) + item.amount; });
         renderSummary(sums);
@@ -479,11 +478,9 @@
     function toggleProcessed(id) { 
         db = db.map(x => String(x.id) === String(id) ? {...x, processed: !x.processed} : x); 
         const updatedEntry = db.find(x => String(x.id) === String(id));
-        
-        // OPRAVENE PORADIE STLPCCOV PRE CLOUD PRI ZMENE STAVU
         syncQueue.push({
             id: updatedEntry.id,
-            date: updatedEntry.date,
+            date: updatedEntry.date.split('T')[0], // OPRAVA: Iba dátum
             category: updatedEntry.category,
             sub: updatedEntry.sub,
             amount: updatedEntry.amount,
@@ -492,20 +489,12 @@
             processed: updatedEntry.processed,
             action: 'save'
         }); 
-        
-        saveData(false); 
-        renderList(); 
-        processSyncQueue(); 
+        saveData(false); renderList(); processSyncQueue(); 
     }
     
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
     function updateTotals() { const bal = db.reduce((s,x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; }
-    
-    function manualSync() { 
-        syncCategories('pull');
-        syncTransactions('pull');
-        processSyncQueue(); 
-    }
+    function manualSync() { syncCategories('pull'); syncTransactions('pull'); processSyncQueue(); }
 
     function initTimeFilters() { 
         const mSelect = document.getElementById('filter-month'), ySelect = document.getElementById('filter-year');
