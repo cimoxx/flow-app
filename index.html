@@ -257,7 +257,21 @@
     async function syncTransactions(action = 'pull') {
         if (action === 'pull') {
             updateSyncUI('syncing');
-            try { const res = await fetch(GOOGLE_URL + "?get=transactions"); const cloudData = await res.json(); if (Array.isArray(cloudData)) { db = cloudData; localStorage.setItem('f_db_v20', JSON.stringify(db)); renderList(); } } catch (e) { console.error("Sync error:", e); }
+            try { 
+                const res = await fetch(GOOGLE_URL + "?get=transactions"); 
+                const cloudData = await res.json(); 
+                if (Array.isArray(cloudData)) { 
+                    // POZOR: Ponechávame lokálny stav 'processed' pre tie, ktoré sú v syncQueue, aby sa neprepísali starými dátami
+                    const queuedIds = syncQueue.map(q => String(q.id));
+                    db = cloudData.map(c => {
+                        const local = db.find(l => String(l.id) === String(c.id));
+                        if (queuedIds.includes(String(c.id)) && local) return local;
+                        return c;
+                    });
+                    localStorage.setItem('f_db_v20', JSON.stringify(db)); 
+                    renderList(); 
+                } 
+            } catch (e) { console.error("Sync error:", e); }
             updateSyncUI('ok');
         }
     }
@@ -302,16 +316,16 @@
         let id = existingId || 'ID-' + Date.now();
         const cleanDate = document.getElementById('f-date').value;
         
-        // Zisťujeme aktuálny stav processed z DB, ak ide o editáciu
-        let isProcessed = false;
-        const existingEntry = db.find(x => String(x.id) === String(id));
-        if (existingEntry) isProcessed = existingEntry.processed;
+        // Zisťujeme aktuálny stav 'processed' z lokálnej DB, aby sme ho neprepísali na false
+        let currentProcessed = false;
+        const localRecord = db.find(x => String(x.id) === String(id));
+        if (localRecord) currentProcessed = localRecord.processed;
 
         const entry = { 
             id: id, date: cleanDate, category: selectedCat, sub: selectedSub, 
             amount: parseFloat(document.getElementById('f-amount').value), 
             type: curType, note: document.getElementById('f-note').value, 
-            processed: isProcessed, user: curUser, action: 'save' 
+            processed: currentProcessed, user: curUser, action: 'save' 
         };
 
         localStorage.setItem('f_last_cat', selectedCat);
@@ -319,7 +333,12 @@
 
         const idx = db.findIndex(x => String(x.id) === String(id));
         if (idx > -1) { db[idx] = entry; } else { db.push(entry); }
-        syncQueue.push(entry); saveData(false); closeModal(); renderList(); processSyncQueue();
+        
+        syncQueue.push(entry); 
+        saveData(false); 
+        closeModal(); 
+        renderList(); 
+        processSyncQueue();
     }
 
     function handleDelete() { const id = document.getElementById('entry-id').value; if(id && confirm('Zmazať?')) { syncQueue.push({ id: id, action: 'delete' }); db = db.filter(x => String(x.id) !== String(id)); saveData(false); closeModal(); renderList(); processSyncQueue(); } }
@@ -417,24 +436,27 @@
     function toggleStatusFilter() { currentStatusFilter = (currentStatusFilter === 'unprocessed') ? 'all' : 'unprocessed'; document.getElementById('ui-toggle').classList.toggle('all-active', currentStatusFilter === 'all'); renderList(); }
     
     function toggleProcessed(id) { 
-        // 1. Zmena stavu v lokálnom poli
-        db = db.map(x => String(x.id) === String(id) ? {...x, processed: !x.processed} : x); 
-        const updatedEntry = db.find(x => String(x.id) === String(id));
-        
-        // 2. Odoslanie čistého stavu do Cloudu
-        syncQueue.push({ 
-            id: updatedEntry.id, 
-            date: updatedEntry.date.split('T')[0], 
-            category: updatedEntry.category, 
-            sub: updatedEntry.sub, 
-            amount: updatedEntry.amount, 
-            type: updatedEntry.type, 
-            note: updatedEntry.note, 
-            processed: updatedEntry.processed, 
-            action: 'save' 
+        // 1. Nájdeme záznam a zmeníme mu stav lokálne
+        let updatedEntry = null;
+        db = db.map(x => {
+            if (String(x.id) === String(id)) {
+                updatedEntry = {...x, processed: !x.processed};
+                return updatedEntry;
+            }
+            return x;
         }); 
         
-        saveData(false); renderList(); processSyncQueue(); 
+        if (updatedEntry) {
+            // 2. Pridáme do synchronizačnej rady s aktuálnymi dátami
+            syncQueue.push({ 
+                ...updatedEntry, 
+                date: updatedEntry.date.split('T')[0], 
+                action: 'save' 
+            }); 
+            saveData(false); 
+            renderList(); 
+            processSyncQueue();
+        }
     }
     
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
