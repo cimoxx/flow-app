@@ -283,14 +283,10 @@
             entryIdInput.value = "";
             document.getElementById('f-date').valueAsDate = new Date();
             setUser(localStorage.getItem('f_last_user') || 'Lukáš'); setType('expense');
-            
-            // NACITANIE POSLEDNEJ POUZITEJ KATEGORIE A PODKATEGORIE
             const lastCat = localStorage.getItem('f_last_cat');
             const lastSub = localStorage.getItem('f_last_sub');
-            
             let catToSelect = lastCat || (categories[0]?.id || '');
             selectCat(catToSelect);
-            
             if(lastSub) {
                 const cat = categories.find(c => c.id === catToSelect);
                 if(cat && cat.subs.includes(lastSub)) setTimeout(() => selectSub(lastSub), 10);
@@ -305,20 +301,24 @@
         let existingId = document.getElementById('entry-id').value;
         let id = existingId || 'ID-' + Date.now();
         const cleanDate = document.getElementById('f-date').value;
+        
+        // Zisťujeme aktuálny stav processed z DB, ak ide o editáciu
+        let isProcessed = false;
+        const existingEntry = db.find(x => String(x.id) === String(id));
+        if (existingEntry) isProcessed = existingEntry.processed;
 
         const entry = { 
             id: id, date: cleanDate, category: selectedCat, sub: selectedSub, 
             amount: parseFloat(document.getElementById('f-amount').value), 
             type: curType, note: document.getElementById('f-note').value, 
-            processed: false, user: curUser, action: 'save' 
+            processed: isProcessed, user: curUser, action: 'save' 
         };
 
-        // ULOZENIE POSLEDNEJ POUZITEJ KATEGORIE A PODKATEGORIE
         localStorage.setItem('f_last_cat', selectedCat);
         localStorage.setItem('f_last_sub', selectedSub);
 
         const idx = db.findIndex(x => String(x.id) === String(id));
-        if (idx > -1) { entry.processed = db[idx].processed; db[idx] = entry; } else { db.push(entry); }
+        if (idx > -1) { db[idx] = entry; } else { db.push(entry); }
         syncQueue.push(entry); saveData(false); closeModal(); renderList(); processSyncQueue();
     }
 
@@ -417,9 +417,23 @@
     function toggleStatusFilter() { currentStatusFilter = (currentStatusFilter === 'unprocessed') ? 'all' : 'unprocessed'; document.getElementById('ui-toggle').classList.toggle('all-active', currentStatusFilter === 'all'); renderList(); }
     
     function toggleProcessed(id) { 
+        // 1. Zmena stavu v lokálnom poli
         db = db.map(x => String(x.id) === String(id) ? {...x, processed: !x.processed} : x); 
         const updatedEntry = db.find(x => String(x.id) === String(id));
-        syncQueue.push({ id: updatedEntry.id, date: updatedEntry.date.split('T')[0], category: updatedEntry.category, sub: updatedEntry.sub, amount: updatedEntry.amount, type: updatedEntry.type, note: updatedEntry.note, processed: updatedEntry.processed, action: 'save' }); 
+        
+        // 2. Odoslanie čistého stavu do Cloudu
+        syncQueue.push({ 
+            id: updatedEntry.id, 
+            date: updatedEntry.date.split('T')[0], 
+            category: updatedEntry.category, 
+            sub: updatedEntry.sub, 
+            amount: updatedEntry.amount, 
+            type: updatedEntry.type, 
+            note: updatedEntry.note, 
+            processed: updatedEntry.processed, 
+            action: 'save' 
+        }); 
+        
         saveData(false); renderList(); processSyncQueue(); 
     }
     
