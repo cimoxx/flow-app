@@ -416,18 +416,26 @@
         const list = document.getElementById('transaction-list');
         const selMonth = parseInt(document.getElementById('filter-month').value);
         const selYear = parseInt(document.getElementById('filter-year').value);
+        
         let filtered = db.filter(d => { const dt = new Date(d.date); return dt.getMonth() === selMonth && dt.getFullYear() === selYear; });
         
-        let summaryData = filtered; 
-        if(currentStatusFilter === 'unprocessed') summaryData = summaryData.filter(d => !d.processed);
-        
+        if (currentStatusFilter === 'unprocessed') {
+            filtered = filtered.filter(d => !d.processed);
+        }
+
         const sums = {}; 
-        summaryData.forEach(item => { if (item.type === 'expense') sums[item.category] = (sums[item.category] || 0) + item.amount; });
+        filtered.forEach(item => { 
+            if (item.type === 'expense') {
+                if (!window.activeSubFilter || item.sub === window.activeSubFilter) {
+                    sums[item.category] = (sums[item.category] || 0) + item.amount; 
+                } else if (!sums[item.category]) {
+                    sums[item.category] = 0;
+                }
+            }
+        });
         
         renderSummary(sums);
 
-        if(currentStatusFilter === 'unprocessed') filtered = filtered.filter(d => !d.processed);
-        
         if (activeCategoryFilter) {
             filtered = filtered.filter(d => d.category === activeCategoryFilter);
             if (window.activeSubFilter) {
