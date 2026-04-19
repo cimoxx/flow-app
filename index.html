@@ -422,7 +422,11 @@
         const sums = {}; summaryData.forEach(item => { if (item.type === 'expense') sums[item.category] = (sums[item.category] || 0) + item.amount; });
         renderSummary(sums);
         if(currentStatusFilter === 'unprocessed') filtered = filtered.filter(d => !d.processed);
-        if(activeCategoryFilter) filtered = filtered.filter(d => d.category === activeCategoryFilter);
+        if (activeCategoryFilter) {
+    filtered = filtered.filter(d => d.category === activeCategoryFilter);
+    // Ak existuje aj filter na podkategóriu, aplikuj ho
+    if (window.activeSubFilter) {
+        filtered = filtered.filter(d => d.sub === window.activeSubFilter);
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
         list.innerHTML = filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(item => `
             <div class="transaction-item p-4 flex items-center justify-between ${item.processed ? 'processed' : ''}">
@@ -438,10 +442,45 @@
         updateTotals(); lucide.createIcons();
     }
 
-    function renderSummary(sums) { const container = document.getElementById('category-summary'); container.innerHTML = Object.keys(sums).sort((a,b) => sums[b] - sums[a]).map(cat => ` <div onclick="toggleFilter('${cat}')" class="summary-card flex-shrink-0 px-3 py-2 rounded-xl cursor-pointer ${activeCategoryFilter === cat ? 'active-filter' : ''}"> <div class="text-[7.5px] font-black ${activeCategoryFilter === cat ? 'text-amber-500' : 'text-slate-400'} uppercase truncate tracking-wider">${cat}</div> <div class="text-[10px] font-extrabold">${sums[cat].toFixed(2)}€</div> </div>`).join(''); }
+    function renderSummary(sums) {
+    const container = document.getElementById('category-summary');
+    
+    // 1. Riadok s hlavnými kategóriami
+    let html = `<div class="flex gap-2 overflow-x-auto no-scrollbar w-full">`;
+    html += Object.keys(sums).sort((a,b) => sums[b] - sums[a]).map(cat => `
+        <div onclick="toggleFilter('${cat}')" class="summary-card flex-shrink-0 px-3 py-2 rounded-xl cursor-pointer ${activeCategoryFilter === cat ? 'active-filter' : ''}">
+            <div class="text-[7.5px] font-black ${activeCategoryFilter === cat ? 'text-amber-500' : 'text-slate-400'} uppercase truncate tracking-wider">${cat}</div>
+            <div class="text-[10px] font-extrabold">${sums[cat].toFixed(2)}€</div>
+        </div>`).join('');
+    html += `</div>`;
+
+    // 2. Riadok s podkategóriami (zobrazí sa len ak je vybratá kategória)
+    if (activeCategoryFilter) {
+        const catObj = categories.find(c => c.id === activeCategoryFilter);
+        if (catObj && catObj.subs && catObj.subs.length > 0) {
+            html += `<div class="flex gap-1.5 overflow-x-auto no-scrollbar w-full mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">`;
+            html += catObj.subs.map(sub => {
+                const isActive = window.activeSubFilter === sub;
+                return `<button onclick="toggleSubFilter('${sub}')" class="flex-shrink-0 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isActive ? 'bg-amber-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}">${sub}</button>`;
+            }).join('');
+            html += `</div>`;
+        }
+    }
+
+    container.innerHTML = html;
+}
+
+// Pomocná funkcia pre prepínanie filtra podkategórií
+function toggleSubFilter(sub) {
+    window.activeSubFilter = (window.activeSubFilter === sub) ? null : sub;
+    renderList();}
     function renderCatGrid() { document.getElementById('cat-grid').innerHTML = categories.map(c => `<button type="button" onclick="selectCat('${c.id}')" data-id="${c.id}" class="cat-tile flex flex-col items-center justify-center p-1 rounded-2xl shadow-sm"><i data-lucide="${c.icon || 'layers'}"></i><span class="truncate w-full">${c.id}</span></button>`).join(''); lucide.createIcons(); }
     function toggleFilter(cat) { activeCategoryFilter = (activeCategoryFilter === cat) ? null : cat; renderList(); }
-    function resetCategoryFilter() { activeCategoryFilter = null; renderList(); }
+function resetCategoryFilter() {
+    activeCategoryFilter = null;
+    window.activeSubFilter = null; // Pridaný riadok
+    renderList();
+}
     function toggleStatusFilter() { currentStatusFilter = (currentStatusFilter === 'unprocessed') ? 'all' : 'unprocessed'; document.getElementById('ui-toggle').classList.toggle('all-active', currentStatusFilter === 'all'); renderList(); }
     
     function toggleProcessed(id) { 
