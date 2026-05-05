@@ -120,7 +120,7 @@
             <div class="flex items-center gap-3">
                 <img src="https://img.icons8.com/fluency/48/safe.png" class="w-9 h-9" alt="Flow Icon">
                 <div>
-                    <span class="text-[9px] font-extrabold uppercase text-emerald-500 tracking-[0.15em]">Peňaženka</span>
+                    <span class="text-[9px] font-extrabold uppercase text-emerald-500 tracking-[0.15em]">Filter</span>
                     <div id="display-balance" class="text-3xl font-extrabold">0,00 €</div>
                 </div>
             </div>
@@ -455,7 +455,10 @@
                 </div>
                 <button onclick="toggleProcessed('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}"><i data-lucide="check" class="w-4 h-4"></i></button>
             </div>`).join('');
-        updateTotals(); lucide.createIcons();
+        
+        // POSIELAME VYFILTROVANÉ DÁTA DO FUNKCIE PRE TOTALS
+        updateTotals(filtered); 
+        lucide.createIcons();
     }
 
     function renderSummary(sums) {
@@ -527,7 +530,13 @@
     }
     
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
-    function updateTotals() { const bal = db.reduce((s,x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; }
+    
+    // TÁTO FUNKCIA TERAZ POČÍTA SUMU LEN Z TOHO, ČO JE AKTUÁLNE ZOBRAZENÉ/VYFILTROVANÉ
+    function updateTotals(currentVisibleData) { 
+        const bal = currentVisibleData.reduce((s,x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); 
+        document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; 
+    }
+
     function manualSync() { syncCategories('pull'); syncTransactions('pull'); processSyncQueue(); }
 
     function initTimeFilters() { 
