@@ -444,19 +444,23 @@
         }
 
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
-        list.innerHTML = filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(item => `
+        
+        // UPRAVENÉ: ZORADENIE POLOŽIEK PODĽA DÁTUMU (NAJNOVŠIE NA VRCHU) A ZOBRAZENIE DÁTUMU ZÁPISU
+        list.innerHTML = filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(item => {
+            const formattedDate = new Date(item.date).toLocaleDateString('sk-SK');
+            return `
             <div class="transaction-item p-4 flex items-center justify-between ${item.processed ? 'processed' : ''}">
                 <div class="flex-1" onclick="openModal('${item.id}')">
                     <div class="flex justify-between items-center pr-3">
                         <span class="font-bold text-xs tracking-tight">${item.category}${item.sub ? ' <span class="text-slate-400 font-medium">/</span> '+item.sub : ''}</span>
                         <span class="font-extrabold text-xs ${item.type === 'income' ? 'text-emerald-500' : ''}">${item.amount.toFixed(2)}€</span>
                     </div>
-                    <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${item.user || 'Lukáš'} ${item.note ? '• '+item.note : ''}</div>
+                    <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${formattedDate} ${item.note ? '• '+item.note : ''}</div>
                 </div>
                 <button onclick="toggleProcessed('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}"><i data-lucide="check" class="w-4 h-4"></i></button>
-            </div>`).join('');
+            </div>`;
+        }).join('');
         
-        // POSIELAME VYFILTROVANÉ DÁTA DO FUNKCIE PRE TOTALS
         updateTotals(filtered); 
         lucide.createIcons();
     }
@@ -531,7 +535,6 @@
     
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
     
-    // TÁTO FUNKCIA TERAZ POČÍTA SUMU LEN Z TOHO, ČO JE AKTUÁLNE ZOBRAZENÉ/VYFILTROVANÉ
     function updateTotals(currentVisibleData) { 
         const bal = currentVisibleData.reduce((s,x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); 
         document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; 
