@@ -111,8 +111,14 @@
         .transaction-item { background: var(--bg-card); border-bottom: 1px solid var(--border); }
         #display-balance { letter-spacing: -0.04em; }
 
-        .month-chip { transition: all 0.2s; flex-shrink: 0; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); border-radius: 10px; padding: 6px 12px; }
+        .month-chip { transition: all 0.2s; flex-shrink: 0; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); border-radius: 10px; padding: 6px 12px; scroll-margin: 0 40px; }
         .month-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
+        
+        /* Zabezpečí plynulé skrolovanie pri centrovaní mesiaca */
+        #filter-months-container {
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 </head>
 <body>
@@ -425,6 +431,7 @@
         }
         renderMonthChips();
         renderList();
+        scrollToActiveMonth(monthIdx);
     }
 
     function renderMonthChips() {
@@ -432,8 +439,16 @@
         const months = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
         container.innerHTML = months.map((m, i) => {
             const isActive = selectedMonths.includes(i);
-            return `<button onclick="toggleMonthSelect(${i})" class="month-chip ${isActive ? 'active' : ''}">${m}</button>`;
+            return `<button id="m-chip-${i}" onclick="toggleMonthSelect(${i})" class="month-chip ${isActive ? 'active' : ''}">${m}</button>`;
         }).join('');
+    }
+
+    // Automatické centrovanie vybraného mesiaca uprostred horizontálneho carouselu
+    function scrollToActiveMonth(monthIdx) {
+        const activeChip = document.getElementById(`m-chip-${monthIdx}`);
+        if (activeChip) {
+            activeChip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
     }
 
     function renderList() {
@@ -570,7 +585,6 @@
     
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
     
-    // Zmena popisku na SPOLU alebo názov zvoleného filtra kategórií
     function updateTotals(filteredData) { 
         const bal = filteredData.reduce((s, x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); 
         document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; 
@@ -595,6 +609,11 @@
 
         const years = [...new Set([now.getFullYear(), ...db.map(x => new Date(x.date).getFullYear())])].sort((a,b) => b-a);
         ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+        
+        // Spustí vycentrovanie hneď pri štarte aplikácie na aktuálny mesiac
+        if (selectedMonths.length > 0) {
+            setTimeout(() => scrollToActiveMonth(selectedMonths[0]), 200);
+        }
     }
     function setUser(u) { curUser = u; localStorage.setItem('f_last_user', u); ['Lukáš', 'Zdenka'].forEach(user => { const btn = document.getElementById(`u-${user}`); if(btn) btn.className = user === u ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }); }
     function setType(t) { curType = t; document.getElementById('t-ex').className = t === 'expense' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-red-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; document.getElementById('t-in').className = t === 'income' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }
