@@ -111,7 +111,6 @@
         .transaction-item { background: var(--bg-card); border-bottom: 1px solid var(--border); }
         #display-balance { letter-spacing: -0.04em; }
 
-        /* Nové štýly pre multichoice mesiacov */
         .month-chip { transition: all 0.2s; flex-shrink: 0; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); border-radius: 10px; padding: 6px 12px; }
         .month-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
     </style>
@@ -124,7 +123,7 @@
             <div class="flex items-center gap-3">
                 <img src="https://img.icons8.com/fluency/48/safe.png" class="w-9 h-9" alt="Flow Icon">
                 <div>
-                    <span class="text-[9px] font-extrabold uppercase text-emerald-500 tracking-[0.15em]">Filter</span>
+                    <span class="text-[9px] font-extrabold uppercase text-emerald-500 tracking-[0.15em]">Zostatok za výber</span>
                     <div id="display-balance" class="text-3xl font-extrabold">0,00 €</div>
                 </div>
             </div>
@@ -139,8 +138,7 @@
     <main class="p-4 flex-1">
         <div class="flex flex-col gap-3 mb-4">
             <div class="flex gap-2 items-center">
-                <div id="filter-months-container" class="flex-1 flex gap-1.5 overflow-x-auto no-scrollbar py-1">
-                    </div>
+                <div id="filter-months-container" class="flex-1 flex gap-1.5 overflow-x-auto no-scrollbar py-1"></div>
                 <select id="filter-year" onchange="renderList()" class="w-20 text-[11px] p-2 outline-none h-[32px]"></select>
             </div>
             <div class="flex items-center justify-between px-1">
@@ -244,7 +242,6 @@
     let currentStatusFilter = 'unprocessed', activeSettingsCat = null;
     window.activeSubFilter = null;
 
-    // NOVÉ: Pole pre uloženie viacerých vybraných mesiacov
     let selectedMonths = [new Date().getMonth()];
 
     function updateSyncUI(status) {
@@ -420,7 +417,6 @@
         updateSyncUI('ok');
     }
 
-    // NOVÉ: Funkcia na prepínanie výberu mesiacov (multichoice)
     function toggleMonthSelect(monthIdx) {
         if (selectedMonths.includes(monthIdx)) {
             selectedMonths = selectedMonths.filter(m => m !== monthIdx);
@@ -431,7 +427,6 @@
         renderList();
     }
 
-    // NOVÉ: Vykreslenie klikateľných čipov pre mesiace
     function renderMonthChips() {
         const container = document.getElementById('filter-months-container');
         const months = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
@@ -445,19 +440,25 @@
         const list = document.getElementById('transaction-list');
         const selYear = parseInt(document.getElementById('filter-year').value);
         
-        // UPRAVENÉ: Filtrovanie berie do úvahy pole vybraných mesiacov (ak je prázdne, zobrazí všetky)
-        let filtered = db.filter(d => { 
+        // 1. ZÁKLADNÉ FILTROVANIE OBDOBIA (zdieľané pre výpočty sumy aj zoznamu)
+        let timeFiltered = db.filter(d => { 
             const dt = new Date(d.date); 
             const monthMatches = selectedMonths.length === 0 || selectedMonths.includes(dt.getMonth());
             return monthMatches && dt.getFullYear() === selYear; 
         });
         
+        // 2. AKTUALIZÁCIA CELKOVÉHO ZOSTATKU pre vybrané časové obdobie
+        updateTotals(timeFiltered);
+
+        // 3. FILTROVANIE PODĽA STAVU (Nové vs Všetky) pre kategórie a zoznam
+        let statusFiltered = timeFiltered;
         if (currentStatusFilter === 'unprocessed') {
-            filtered = filtered.filter(d => !d.processed);
+            statusFiltered = statusFiltered.filter(d => !d.processed);
         }
 
+        // 4. VÝPOČET SUMÁROV PRE KATEGÓRIE (reaguje na stav Nové/Všetky)
         const sums = {}; 
-        filtered.forEach(item => { 
+        statusFiltered.forEach(item => { 
             if (item.type === 'expense') {
                 if (!window.activeSubFilter || item.sub === window.activeSubFilter) {
                     sums[item.category] = (sums[item.category] || 0) + item.amount; 
@@ -466,19 +467,20 @@
                 }
             }
         });
-        
-        renderSummary(sums);
+        renderSummary(sums, statusFiltered);
 
+        // 5. FINÁLNE FILTROVANIE ZOZNAMU (Kategórie a Podkategórie)
+        let finalFiltered = statusFiltered;
         if (activeCategoryFilter) {
-            filtered = filtered.filter(d => d.category === activeCategoryFilter);
+            finalFiltered = finalFiltered.filter(d => d.category === activeCategoryFilter);
             if (window.activeSubFilter) {
-                filtered = filtered.filter(d => d.sub === window.activeSubFilter);
+                finalFiltered = finalFiltered.filter(d => d.sub === window.activeSubFilter);
             }
         }
 
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
         
-        list.innerHTML = filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(item => {
+        list.innerHTML = finalFiltered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(item => {
             const formattedDate = new Date(item.date).toLocaleDateString('sk-SK');
             return `
             <div class="transaction-item p-4 flex items-center justify-between ${item.processed ? 'processed' : ''}">
@@ -493,11 +495,10 @@
             </div>`;
         }).join('');
         
-        updateTotals(filtered); 
         lucide.createIcons();
     }
 
-    function renderSummary(sums) {
+    function renderSummary(sums, statusFiltered) {
         const container = document.getElementById('category-summary');
         let html = `<div class="flex gap-2 overflow-x-auto no-scrollbar w-full pb-1">`;
         html += Object.keys(sums).sort((a,b) => sums[b] - sums[a]).map(cat => `
@@ -513,7 +514,13 @@
                 html += `<div class="flex gap-1.5 overflow-x-auto no-scrollbar w-full mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 pb-1">`;
                 html += catObj.subs.map(sub => {
                     const isActive = window.activeSubFilter === sub;
-                    return `<button onclick="toggleSubFilter('${sub}')" class="flex-shrink-0 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isActive ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}">${sub}</button>`;
+                    
+                    // Výpočet sumy špecificky pre túto podkategóriu na základe aktuálneho stavu filtrov
+                    const subSum = statusFiltered
+                        .filter(item => item.category === activeCategoryFilter && item.sub === sub && item.type === 'expense')
+                        .reduce((acc, curr) => acc + curr.amount, 0);
+
+                    return `<button onclick="toggleSubFilter('${sub}')" class="flex-shrink-0 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isActive ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}">${sub} (${subSum.toFixed(2)}€)</button>`;
                 }).join('');
                 html += `</div>`;
             }
@@ -567,8 +574,9 @@
     
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
     
-    function updateTotals(currentVisibleData) { 
-        const bal = currentVisibleData.reduce((s,x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); 
+    // OPRAVENÉ: Sčítava korektne všetky vybrané záznamy za zvolené časové obdobie (nezávisle od filtrov kategórií)
+    function updateTotals(timeFilteredData) { 
+        const bal = timeFilteredData.reduce((s, x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); 
         document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; 
     }
 
@@ -578,7 +586,6 @@
         const ySelect = document.getElementById('filter-year');
         const now = new Date(); 
         
-        // UPRAVENÉ: Vykreslíme úvodné čipy namiesto selectu
         renderMonthChips();
 
         const years = [...new Set([now.getFullYear(), ...db.map(x => new Date(x.date).getFullYear())])].sort((a,b) => b-a);
