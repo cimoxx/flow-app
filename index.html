@@ -123,7 +123,7 @@
             <div class="flex items-center gap-3">
                 <img src="https://img.icons8.com/fluency/48/safe.png" class="w-9 h-9" alt="Flow Icon">
                 <div>
-                    <span id="balance-label" class="text-[9px] font-extrabold uppercase text-emerald-500 tracking-[0.15em]">Zostatok za výber</span>
+                    <span id="balance-label" class="text-[9px] font-extrabold uppercase text-emerald-500 tracking-[0.15em]">SPOLU</span>
                     <div id="display-balance" class="text-3xl font-extrabold">0,00 €</div>
                 </div>
             </div>
@@ -452,12 +452,11 @@
             currentFiltered = currentFiltered.filter(d => !d.processed);
         }
 
-        // 3. VÝPOČET SUMÁROV PRE HORIZONTÁLNE KARTY (počíta iba výdavky za čas + stav)
+        // 3. VÝPOČET SUMÁROV PRE HORIZONTÁLNE KARTY (výdavky podľa času + stavu)
         const sums = {}; 
         currentFiltered.forEach(item => { 
             if (item.type === 'expense') {
                 if (!sums[item.category]) sums[item.category] = 0;
-                // Ak je vybratá podkategória, v danej materskej kategórii sčítavame len ju
                 if (!window.activeSubFilter || item.sub === window.activeSubFilter) {
                     sums[item.category] += item.amount; 
                 }
@@ -473,7 +472,7 @@
             }
         }
 
-        // 5. AKTUALIZÁCIA HORNÉHO CELKOVÉHO ZOSTATKU (reaguje na úplne všetky aplikované filtre)
+        // 5. AKTUALIZÁCIA HORNÉHO CELKOVÉHO ZOSTATKU
         updateTotals(currentFiltered);
 
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
@@ -571,19 +570,18 @@
     
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
     
-    // SPOLUHLAS s vybranými filtrami - sčítava presne to, čo prešlo celým procesom filtrov
+    // Zmena popisku na SPOLU alebo názov zvoleného filtra kategórií
     function updateTotals(filteredData) { 
         const bal = filteredData.reduce((s, x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); 
         document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; 
         
-        // Dynamická zmena textu nad zostatkom na základe vybratých filtrov kategórií
         const label = document.getElementById('balance-label');
         if (window.activeSubFilter) {
-            label.innerText = `Suma: ${activeCategoryFilter} / ${window.activeSubFilter}`;
+            label.innerText = `${activeCategoryFilter} / ${window.activeSubFilter}`;
         } else if (activeCategoryFilter) {
-            label.innerText = `Suma kategórie: ${activeCategoryFilter}`;
+            label.innerText = activeCategoryFilter;
         } else {
-            label.innerText = "Zostatok za výber";
+            label.innerText = "SPOLU";
         }
     }
 
