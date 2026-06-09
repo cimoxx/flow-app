@@ -110,6 +110,10 @@
 
         .transaction-item { background: var(--bg-card); border-bottom: 1px solid var(--border); }
         #display-balance { letter-spacing: -0.04em; }
+
+        /* Nové štýly pre multichoice mesiacov */
+        .month-chip { transition: all 0.2s; flex-shrink: 0; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); border-radius: 10px; padding: 6px 12px; }
+        .month-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
     </style>
 </head>
 <body>
@@ -134,9 +138,10 @@
 
     <main class="p-4 flex-1">
         <div class="flex flex-col gap-3 mb-4">
-            <div class="flex gap-2">
-                <select id="filter-month" onchange="renderList()" class="flex-1 text-[11px] p-2 outline-none"></select>
-                <select id="filter-year" onchange="renderList()" class="w-20 text-[11px] p-2 outline-none"></select>
+            <div class="flex gap-2 items-center">
+                <div id="filter-months-container" class="flex-1 flex gap-1.5 overflow-x-auto no-scrollbar py-1">
+                    </div>
+                <select id="filter-year" onchange="renderList()" class="w-20 text-[11px] p-2 outline-none h-[32px]"></select>
             </div>
             <div class="flex items-center justify-between px-1">
                 <div id="ui-toggle" class="toggle-container" onclick="toggleStatusFilter()">
@@ -238,6 +243,9 @@
     let curType = 'expense', selectedCat = '', selectedSub = '', activeCategoryFilter = null, isSyncing = false;
     let currentStatusFilter = 'unprocessed', activeSettingsCat = null;
     window.activeSubFilter = null;
+
+    // NOVÉ: Pole pre uloženie viacerých vybraných mesiacov
+    let selectedMonths = [new Date().getMonth()];
 
     function updateSyncUI(status) {
         const dot = document.getElementById('sync-dot');
@@ -412,12 +420,37 @@
         updateSyncUI('ok');
     }
 
+    // NOVÉ: Funkcia na prepínanie výberu mesiacov (multichoice)
+    function toggleMonthSelect(monthIdx) {
+        if (selectedMonths.includes(monthIdx)) {
+            selectedMonths = selectedMonths.filter(m => m !== monthIdx);
+        } else {
+            selectedMonths.push(monthIdx);
+        }
+        renderMonthChips();
+        renderList();
+    }
+
+    // NOVÉ: Vykreslenie klikateľných čipov pre mesiace
+    function renderMonthChips() {
+        const container = document.getElementById('filter-months-container');
+        const months = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
+        container.innerHTML = months.map((m, i) => {
+            const isActive = selectedMonths.includes(i);
+            return `<button onclick="toggleMonthSelect(${i})" class="month-chip ${isActive ? 'active' : ''}">${m}</button>`;
+        }).join('');
+    }
+
     function renderList() {
         const list = document.getElementById('transaction-list');
-        const selMonth = parseInt(document.getElementById('filter-month').value);
         const selYear = parseInt(document.getElementById('filter-year').value);
         
-        let filtered = db.filter(d => { const dt = new Date(d.date); return dt.getMonth() === selMonth && dt.getFullYear() === selYear; });
+        // UPRAVENÉ: Filtrovanie berie do úvahy pole vybraných mesiacov (ak je prázdne, zobrazí všetky)
+        let filtered = db.filter(d => { 
+            const dt = new Date(d.date); 
+            const monthMatches = selectedMonths.length === 0 || selectedMonths.includes(dt.getMonth());
+            return monthMatches && dt.getFullYear() === selYear; 
+        });
         
         if (currentStatusFilter === 'unprocessed') {
             filtered = filtered.filter(d => !d.processed);
@@ -445,7 +478,6 @@
 
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
         
-        // UPRAVENÉ: ZORADENIE POLOŽIEK PODĽA DÁTUMU (NAJNOVŠIE NA VRCHU) A ZOBRAZENIE DÁTUMU ZÁPISU
         list.innerHTML = filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(item => {
             const formattedDate = new Date(item.date).toLocaleDateString('sk-SK');
             return `
@@ -543,10 +575,12 @@
     function manualSync() { syncCategories('pull'); syncTransactions('pull'); processSyncQueue(); }
 
     function initTimeFilters() { 
-        const mSelect = document.getElementById('filter-month'), ySelect = document.getElementById('filter-year');
-        const months = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+        const ySelect = document.getElementById('filter-year');
         const now = new Date(); 
-        mSelect.innerHTML = months.map((m, i) => `<option value="${i}" ${i === now.getMonth() ? 'selected' : ''}>${m}</option>`).join('');
+        
+        // UPRAVENÉ: Vykreslíme úvodné čipy namiesto selectu
+        renderMonthChips();
+
         const years = [...new Set([now.getFullYear(), ...db.map(x => new Date(x.date).getFullYear())])].sort((a,b) => b-a);
         ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
     }
