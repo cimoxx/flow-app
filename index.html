@@ -210,7 +210,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.5.0</h3>
+                <h3 class="text-xl font-extrabold">v2.5.1</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -220,31 +220,21 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.5.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.5.1</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Prechod na ukladanie plnej časovej pečiatky s časovým pásmom zariadenia.</li>
-                    <li>Spracovanie a zobrazenie dátumu podľa lokálneho časového pásma bez posunu.</li>
+                    <li>Korekcia UTC posunu Google Apps Scriptu (pripočítanie lokálnej zóny).</li>
+                    <li>Odosielanie dátumu spolu s lokálnym časom zápisu.</li>
                 </ul>
             </div>
 
             <div class="border-t border-slate-100 dark:border-slate-800/60 pt-3">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.4.1</span>
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.5.0</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Oprava formátovania a spracovania dátumu bez časového posunu.</li>
-                </ul>
-            </div>
-
-            <div class="border-t border-slate-100 dark:border-slate-800/60 pt-3">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.4.0</span>
-                </div>
-                <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Oprava posunu časových pásiem pri načítaní a zobrazení dátumov.</li>
-                    <li>Pridané info tlačidlo s históriou verzii.</li>
+                    <li>Pridaná podpora pre časové pečiatky.</li>
                 </ul>
             </div>
         </div>
@@ -302,10 +292,23 @@
 
     let selectedMonths = [new Date().getMonth()];
 
-    // Bezpečný zápis lokálneho dátumu vo formáte YYYY-MM-DD
+    // Bezpečný prepočet dátumu z Google Apps Script s korekciou UTC posunu
     function getCleanDateStr(dStr) {
         if (!dStr) return getTodayStr();
         let s = String(dStr).trim();
+        
+        // Ak Google Apps Script poslal plný ISO reťazec s časom (napr. 2026-07-26T22:00:00.000Z)
+        if (s.includes('T') || s.includes('Z')) {
+            const parsed = new Date(s);
+            if (!isNaN(parsed.getTime())) {
+                // Prepočet z UTC na lokálny čas prehliadača
+                const year = parsed.getFullYear();
+                const month = String(parsed.getMonth() + 1).padStart(2, '0');
+                const day = String(parsed.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+        }
+
         if (s.includes('T')) s = s.split('T')[0];
         if (s.includes(' ')) s = s.split(' ')[0];
         
@@ -337,25 +340,12 @@
         return `${year}-${month}-${day}`;
     }
 
-    // Vytvorenie ISO reťazca s aktuálnym časom a časovým pásmom pre konkrétny dátum YYYY-MM-DD
-    function buildIsoWithTimezone(dateInputVal) {
+    // Formátovanie dátumu s lokálnym časom pre Google Sheets
+    function buildDateWithCurrentTime(dateInputVal) {
         const cleanD = getCleanDateStr(dateInputVal);
         const now = new Date();
-        
-        const parts = cleanD.split('-');
-        if (parts.length === 3) {
-            // Nastavíme vybraný dátum a aktuálny lokálny čas
-            const localDate = new Date(
-                parseInt(parts[0]), 
-                parseInt(parts[1]) - 1, 
-                parseInt(parts[2]), 
-                now.getHours(), 
-                now.getMinutes(), 
-                now.getSeconds()
-            );
-            return localDate.toISOString(); // Zápis s presnou časovou pečiatkou
-        }
-        return now.toISOString();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        return `${cleanD} ${timeStr}`;
     }
 
     function openChangelogModal() { document.getElementById('changelog-modal').classList.remove('hidden'); }
@@ -457,9 +447,8 @@
         let existingId = document.getElementById('entry-id').value;
         let id = existingId || 'ID-' + Date.now();
         
-        // Vytvorenie ISO timestampu s lokálnym časom a časovou zónou
-        const isoDateWithTz = buildIsoWithTimezone(document.getElementById('f-date').value);
         const cleanDate = getCleanDateStr(document.getElementById('f-date').value);
+        const fullDateWithTime = buildDateWithCurrentTime(document.getElementById('f-date').value);
         
         let currentProcessed = false;
         const localRecord = db.find(x => String(x.id) === String(id));
@@ -467,8 +456,8 @@
 
         const entry = { 
             id: id, 
-            date: cleanDate, 
-            timestamp: isoDateWithTz, // Uloženie presného času a časového pásma
+            date: cleanDate,
+            full_date: fullDateWithTime,
             category: selectedCat, 
             sub: selectedSub, 
             amount: parseFloat(document.getElementById('f-amount').value), 
