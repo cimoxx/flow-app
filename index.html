@@ -169,8 +169,8 @@
 <div id="modal-overlay" class="fixed inset-0 bg-slate-900/90 z-[40] hidden backdrop-blur-sm flex items-end">
     <div class="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-[2.5rem] p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-6 sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10">
-            <button onclick="closeModal()" class="text-slate-400 font-extrabold text-[10px] uppercase tracking-widest">Zavrieť</button>
-            <button onclick="document.getElementById('save-trigger').click()" class="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-extrabold text-[10px] uppercase shadow-md">Uložiť</button>
+            <button type="button" onclick="closeModal()" class="text-slate-400 font-extrabold text-[10px] uppercase tracking-widest">Zavrieť</button>
+            <button type="button" onclick="document.getElementById('save-trigger').click()" class="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-extrabold text-[10px] uppercase shadow-md">Uložiť</button>
         </div>
         <form id="entry-form" onsubmit="handleSave(event)" class="space-y-5">
             <input type="submit" id="save-trigger" class="hidden">
@@ -297,32 +297,40 @@
         const amountInput = document.getElementById('f-amount');
         const entryIdInput = document.getElementById('entry-id');
         overlay.classList.remove('hidden');
-        renderCatGrid();
 
         if(id) {
             const i = db.find(x => String(x.id) === String(id));
-            entryIdInput.value = i.id; amountInput.value = i.amount;
-            document.getElementById('f-note').value = i.note; 
-            document.getElementById('f-date').value = i.date.split('T')[0];
-            setUser(i.user || 'Lukáš'); setType(i.type); 
+            entryIdInput.value = i.id; 
+            amountInput.value = i.amount;
+            document.getElementById('f-note').value = i.note || ''; 
+            document.getElementById('f-date').value = i.date ? i.date.split('T')[0] : new Date().toISOString().split('T')[0];
+            setUser(i.user || 'Lukáš'); 
+            setType(i.type || 'expense'); 
+            
+            renderCatGrid();
             selectCat(i.category);
-            if(i.sub) setTimeout(() => selectSub(i.sub), 10);
+            if(i.sub) { selectSub(i.sub); }
+
             document.getElementById('del-btn').classList.remove('hidden');
         } else {
             document.getElementById('entry-form').reset();
             entryIdInput.value = "";
             document.getElementById('f-date').valueAsDate = new Date();
-            setUser(localStorage.getItem('f_last_user') || 'Lukáš'); setType('expense');
+            setUser(localStorage.getItem('f_last_user') || 'Lukáš'); 
+            setType('expense');
+            
+            renderCatGrid();
             
             const lastCat = localStorage.getItem('f_last_cat');
             const lastSub = localStorage.getItem('f_last_sub');
             let catToSelect = lastCat || (categories[0]?.id || '');
+            
             selectCat(catToSelect);
             
             if(lastSub) {
                 const cat = categories.find(c => c.id === catToSelect);
-                if(cat && cat.subs.includes(lastSub)) {
-                    setTimeout(() => selectSub(lastSub), 10);
+                if(cat && cat.subs && cat.subs.includes(lastSub)) {
+                    selectSub(lastSub);
                 }
             }
             document.getElementById('del-btn').classList.add('hidden');
@@ -370,8 +378,8 @@
                     <div class="text-[9px] text-slate-300 uppercase font-black tracking-tighter">${c.subs.length} subs</div>
                 </div>
                 <div class="flex flex-col gap-1">
-                    <button onclick="moveCat(${i}, -1)" class="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-up" class="w-3 h-3"></i></button>
-                    <button onclick="moveCat(${i}, 1)" class="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-down" class="w-3 h-3"></i></button>
+                    <button type="button" onclick="moveCat(${i}, -1)" class="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-up" class="w-3 h-3"></i></button>
+                    <button type="button" onclick="moveCat(${i}, 1)" class="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-down" class="w-3 h-3"></i></button>
                 </div>
             </div>`).join('');
         lucide.createIcons();
@@ -384,11 +392,11 @@
             <div class="flex items-center gap-2">
                 <div class="flex-1 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between border border-transparent dark:border-slate-700">
                     <div class="font-bold text-xs uppercase">${s}</div>
-                    <button onclick="deleteSub(${i})" class="p-2 text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    <button type="button" onclick="deleteSub(${i})" class="p-2 text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                 </div>
                 <div class="flex flex-col gap-1">
-                    <button onclick="moveSub(${i}, -1)" class="p-1.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-up" class="w-2.5 h-2.5"></i></button>
-                    <button onclick="moveSub(${i}, 1)" class="p-1.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-down" class="w-2.5 h-2.5"></i></button>
+                    <button type="button" onclick="moveSub(${i}, -1)" class="p-1.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-up" class="w-2.5 h-2.5"></i></button>
+                    <button type="button" onclick="moveSub(${i}, 1)" class="p-1.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-down" class="w-2.5 h-2.5"></i></button>
                 </div>
             </div>`).join('');
         lucide.createIcons();
@@ -401,17 +409,32 @@
     function deleteSub(index) { if(confirm('Zmazať podkategóriu?')) { categories[activeSettingsCat].subs.splice(index, 1); saveData(true); renderManageSubs(); } }
     function deleteActiveCat() { if(confirm(`Zmazať kategóriu ${categories[activeSettingsCat].id}?`)) { categories.splice(activeSettingsCat, 1); saveData(true); closeCatDetail(); renderCatGrid(); } }
 
-    function selectCat(id) { 
-        selectedCat = id; selectedSub = ''; 
+    function selectCat(id, e = null) { 
+        if (e) e.preventDefault();
+        selectedCat = id; 
+        selectedSub = ''; 
+        
         document.querySelectorAll('.cat-tile').forEach(el => el.classList.toggle('selected', el.dataset.id === id)); 
         const cat = categories.find(c => c.id === id); 
+        
+        const subSection = document.getElementById('sub-section');
+        const subGrid = document.getElementById('sub-grid');
+        
         if(cat && cat.subs && cat.subs.length > 0) { 
-            document.getElementById('sub-section').classList.remove('hidden'); 
-            document.getElementById('sub-grid').innerHTML = cat.subs.map(s => `<button type="button" onclick="selectSub('${s}')" data-sub="${s}" class="sub-chip px-3 py-2 rounded-xl font-extrabold uppercase shadow-sm">${s}</button>`).join(''); 
-        } else { document.getElementById('sub-section').classList.add('hidden'); } 
+            subSection.classList.remove('hidden'); 
+            subGrid.innerHTML = cat.subs.map(s => `<button type="button" onclick="selectSub('${s}', event)" data-sub="${s}" class="sub-chip px-3 py-2 rounded-xl font-extrabold uppercase shadow-sm">${s}</button>`).join(''); 
+        } else { 
+            subSection.classList.add('hidden'); 
+            subGrid.innerHTML = '';
+        } 
     }
 
-    function selectSub(s) { selectedSub = s; document.querySelectorAll('.sub-chip').forEach(el => el.classList.toggle('active', el.dataset.sub === s)); }
+    function selectSub(s, e = null) { 
+        if (e) e.preventDefault();
+        selectedSub = s; 
+        document.querySelectorAll('.sub-chip').forEach(el => el.classList.toggle('active', el.dataset.sub === s)); 
+    }
+
     function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
     function closeCatDetail() { activeSettingsCat = null; document.getElementById('settings-cat-detail').classList.add('hidden'); document.getElementById('settings-home').classList.remove('hidden'); renderManageCats(); }
     function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s === 'settings') { activeSettingsCat = null; closeCatDetail(); renderManageCats(); } else renderList(); }
@@ -439,7 +462,7 @@
         const months = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
         container.innerHTML = months.map((m, i) => {
             const isActive = selectedMonths.includes(i);
-            return `<button id="m-chip-${i}" onclick="toggleMonthSelect(${i})" class="month-chip ${isActive ? 'active' : ''}">${m}</button>`;
+            return `<button type="button" id="m-chip-${i}" onclick="toggleMonthSelect(${i})" class="month-chip ${isActive ? 'active' : ''}">${m}</button>`;
         }).join('');
     }
 
@@ -503,7 +526,7 @@
                     </div>
                     <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${formattedDate} ${item.note ? '• '+item.note : ''}</div>
                 </div>
-                <button onclick="toggleProcessed('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}"><i data-lucide="check" class="w-4 h-4"></i></button>
+                <button type="button" onclick="toggleProcessed('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}"><i data-lucide="check" class="w-4 h-4"></i></button>
             </div>`;
         }).join('');
         
@@ -531,7 +554,7 @@
                         .filter(item => item.category === activeCategoryFilter && item.sub === sub && item.type === 'expense')
                         .reduce((acc, curr) => acc + curr.amount, 0);
 
-                    return `<button onclick="toggleSubFilter('${sub}')" class="flex-shrink-0 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isActive ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}">${sub} (${subSum.toFixed(2)}€)</button>`;
+                    return `<button type="button" onclick="toggleSubFilter('${sub}')" class="flex-shrink-0 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isActive ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}">${sub} (${subSum.toFixed(2)}€)</button>`;
                 }).join('');
                 html += `</div>`;
             }
@@ -544,7 +567,10 @@
         renderList();
     }
 
-    function renderCatGrid() { document.getElementById('cat-grid').innerHTML = categories.map(c => `<button type="button" onclick="selectCat('${c.id}')" data-id="${c.id}" class="cat-tile flex flex-col items-center justify-center p-1 rounded-2xl shadow-sm"><i data-lucide="${c.icon || 'layers'}"></i><span class="truncate w-full">${c.id}</span></button>`).join(''); lucide.createIcons(); }
+    function renderCatGrid() { 
+        document.getElementById('cat-grid').innerHTML = categories.map(c => `<button type="button" onclick="selectCat('${c.id}', event)" data-id="${c.id}" class="cat-tile flex flex-col items-center justify-center p-1 rounded-2xl shadow-sm"><i data-lucide="${c.icon || 'layers'}"></i><span class="truncate w-full">${c.id}</span></button>`).join(''); 
+        lucide.createIcons(); 
+    }
     
     function toggleFilter(cat) { 
         if (activeCategoryFilter === cat) {
