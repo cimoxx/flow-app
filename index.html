@@ -243,7 +243,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.6.1</h3>
+                <h3 class="text-xl font-extrabold">v2.6.2</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -253,12 +253,12 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.6.1</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.6.2</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Ponechaná fajočka na ľavej strane transakcie na priame kliknutie.</li>
-                    <li>Pridané swipe gestá (Doprava = Zapísaná, Doľava = Vymazať).</li>
+                    <li>Premiestnená fajočka na pravú stranu transakcie.</li>
+                    <li>Opravená vysoká citlivosť – transakcie sa neotvárajú pri vertikálnom scrolovaní.</li>
                 </ul>
             </div>
         </div>
@@ -718,17 +718,17 @@
                                  ontouchmove="handleSwipeMove(event, '${item.id}')"
                                  ontouchend="handleSwipeEnd(event, '${item.id}', ${item.processed})">
                                 
-                                <!-- Klikateľná fajočka na ľavej strane -->
-                                <div onclick="event.stopPropagation(); toggleProcessed('${item.id}')" class="w-7 h-7 rounded-lg flex items-center justify-center border mr-3 cursor-pointer ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}">
-                                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
-                                </div>
-
                                 <div class="flex-1">
                                     <div class="flex justify-between items-center pr-3">
                                         <span class="font-bold text-xs tracking-tight">${item.category}${item.sub ? ' <span class="text-slate-400 font-medium">/</span> '+item.sub : ''}</span>
                                         <span class="font-extrabold text-xs ${item.type === 'income' ? 'text-emerald-500' : ''}">${parseFloat(item.amount).toFixed(2)}€</span>
                                     </div>
                                     <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${item.note ? item.note : ''}</div>
+                                </div>
+
+                                <!-- Klikateľná fajočka na PRAVEJ strane -->
+                                <div onclick="event.stopPropagation(); toggleProcessed('${item.id}')" class="w-7 h-7 rounded-lg flex items-center justify-center border ml-3 cursor-pointer shrink-0 ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}">
+                                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
                                 </div>
                             </div>
                         </div>
@@ -741,17 +741,17 @@
         lucide.createIcons();
     }
 
-    /* --- SWIPE GESTÁ LOGIKA --- */
+    /* --- SWIPE GESTÁ A OPRAVA CITLIVOSTI --- */
     let swipeStartX = 0;
     let swipeStartY = 0;
     let swipeCurrentX = 0;
-    let isSwiping = false;
+    let isHorizontalSwipe = false;
 
     function handleSwipeStart(e, id) {
         swipeStartX = e.touches[0].clientX;
         swipeStartY = e.touches[0].clientY;
         swipeCurrentX = 0;
-        isSwiping = false;
+        isHorizontalSwipe = false;
 
         const content = document.getElementById(`item-${id}`);
         if(content) content.classList.add('swiping');
@@ -763,23 +763,29 @@
         const diffX = touchX - swipeStartX;
         const diffY = touchY - swipeStartY;
 
-        if (!isSwiping && Math.abs(diffY) > Math.abs(diffX)) {
+        // Ak uzívateľ scroluje vertikálne, ignorujeme swipe gestá
+        if (!isHorizontalSwipe && Math.abs(diffY) > Math.abs(diffX)) {
             return;
         }
 
-        isSwiping = true;
-        swipeCurrentX = diffX;
+        // Zmena smeru je primárne horizontálna (posun do strán)
+        if (Math.abs(diffX) > 10) {
+            isHorizontalSwipe = true;
+        }
 
-        const content = document.getElementById(`item-${id}`);
-        const bg = document.getElementById(`bg-${id}`);
+        if (isHorizontalSwipe) {
+            swipeCurrentX = diffX;
+            const content = document.getElementById(`item-${id}`);
+            const bg = document.getElementById(`bg-${id}`);
 
-        if (content && bg) {
-            content.style.transform = `translateX(${diffX}px)`;
+            if (content && bg) {
+                content.style.transform = `translateX(${diffX}px)`;
 
-            if (diffX > 0) {
-                bg.style.backgroundColor = 'rgba(16, 185, 129, 0.9)';
-            } else if (diffX < 0) {
-                bg.style.backgroundColor = 'rgba(239, 68, 68, 0.9)';
+                if (diffX > 0) {
+                    bg.style.backgroundColor = 'rgba(16, 185, 129, 0.9)';
+                } else if (diffX < 0) {
+                    bg.style.backgroundColor = 'rgba(239, 68, 68, 0.9)';
+                }
             }
         }
     }
@@ -793,17 +799,22 @@
 
         const threshold = 75;
 
-        if (swipeCurrentX > threshold) {
+        if (isHorizontalSwipe && swipeCurrentX > threshold) {
             toggleProcessed(id);
-        } else if (swipeCurrentX < -threshold) {
+        } else if (isHorizontalSwipe && swipeCurrentX < -threshold) {
             handleDelete(id);
-        } else if (Math.abs(swipeCurrentX) < 5) {
-            openModal(id);
+        } else if (!isHorizontalSwipe && Math.abs(swipeCurrentX) < 5) {
+            // Otvorí sa modal LEN ak nešlo o posun stránky ani swipe (čistý klik/tap)
+            const endTouchY = e.changedTouches[0].clientY;
+            if (Math.abs(endTouchY - swipeStartY) < 10) {
+                openModal(id);
+            }
         }
 
         swipeStartX = 0;
+        swipeStartY = 0;
         swipeCurrentX = 0;
-        isSwiping = false;
+        isHorizontalSwipe = false;
     }
 
     function renderSummary(sums, statusFiltered) {
