@@ -243,7 +243,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.6.0</h3>
+                <h3 class="text-xl font-extrabold">v2.6.1</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -253,21 +253,12 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.6.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.6.1</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridané natívne swipe gestá na transakciách (Doprava = Označiť, Doľava = Vymazať).</li>
-                    <li>Optimalizovaný UI/UX zážitok pre mobilné zariadenia.</li>
-                </ul>
-            </div>
-
-            <div class="border-t border-slate-100 dark:border-slate-800/60 pt-3">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.5.1</span>
-                </div>
-                <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Korekcia UTC posunu Google Apps Scriptu.</li>
+                    <li>Ponechaná fajočka na ľavej strane transakcie na priame kliknutie.</li>
+                    <li>Pridané swipe gestá (Doprava = Zapísaná, Doľava = Vymazať).</li>
                 </ul>
             </div>
         </div>
@@ -726,15 +717,18 @@
                                  ontouchstart="handleSwipeStart(event, '${item.id}')"
                                  ontouchmove="handleSwipeMove(event, '${item.id}')"
                                  ontouchend="handleSwipeEnd(event, '${item.id}', ${item.processed})">
+                                
+                                <!-- Klikateľná fajočka na ľavej strane -->
+                                <div onclick="event.stopPropagation(); toggleProcessed('${item.id}')" class="w-7 h-7 rounded-lg flex items-center justify-center border mr-3 cursor-pointer ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}">
+                                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                </div>
+
                                 <div class="flex-1">
                                     <div class="flex justify-between items-center pr-3">
                                         <span class="font-bold text-xs tracking-tight">${item.category}${item.sub ? ' <span class="text-slate-400 font-medium">/</span> '+item.sub : ''}</span>
                                         <span class="font-extrabold text-xs ${item.type === 'income' ? 'text-emerald-500' : ''}">${parseFloat(item.amount).toFixed(2)}€</span>
                                     </div>
                                     <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${item.note ? item.note : ''}</div>
-                                </div>
-                                <div class="w-7 h-7 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}">
-                                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
                                 </div>
                             </div>
                         </div>
@@ -769,7 +763,6 @@
         const diffX = touchX - swipeStartX;
         const diffY = touchY - swipeStartY;
 
-        // Ak používateľ skôr skroluje vertikálne, ignorujeme horizontal swipe
         if (!isSwiping && Math.abs(diffY) > Math.abs(diffX)) {
             return;
         }
@@ -784,10 +777,8 @@
             content.style.transform = `translateX(${diffX}px)`;
 
             if (diffX > 0) {
-                // Posun Doprava (Zelená - Zapísaná)
                 bg.style.backgroundColor = 'rgba(16, 185, 129, 0.9)';
             } else if (diffX < 0) {
-                // Posun Doľava (Červená - Vymazať)
                 bg.style.backgroundColor = 'rgba(239, 68, 68, 0.9)';
             }
         }
@@ -800,16 +791,13 @@
             content.style.transform = '';
         }
 
-        const threshold = 75; // minimálna vzdialenosť pre aktiváciu v px
+        const threshold = 75;
 
         if (swipeCurrentX > threshold) {
-            // Swipe Doprava -> Označiť / Odznačiť
             toggleProcessed(id);
         } else if (swipeCurrentX < -threshold) {
-            // Swipe Doľava -> Vymazať
             handleDelete(id);
         } else if (Math.abs(swipeCurrentX) < 5) {
-            // Obyčajné klepnutie (Tap) -> Otvoriť Editáciu
             openModal(id);
         }
 
