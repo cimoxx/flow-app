@@ -128,7 +128,8 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: white;
-            transition: background-color 0.2s ease;
+            transition: background-color 0.2s ease, opacity 0.15s ease;
+            opacity: 0; /* Skryté v nečinnom stave, aby nepresvitalo cez priehľadné karty */
         }
         .swipe-content {
             position: relative;
@@ -243,7 +244,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.6.2</h3>
+                <h3 class="text-xl font-extrabold">v2.6.3</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -253,12 +254,13 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.6.2</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.6.3</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Opravený presvitajúci text (vodoznak) pod spracovanými transakciami.</li>
                     <li>Premiestnená fajočka na pravú stranu transakcie.</li>
-                    <li>Opravená vysoká citlivosť – transakcie sa neotvárajú pri vertikálnom scrolovaní.</li>
+                    <li>Opravená vysoká citlivosť na scrolovanie.</li>
                 </ul>
             </div>
         </div>
@@ -726,7 +728,6 @@
                                     <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${item.note ? item.note : ''}</div>
                                 </div>
 
-                                <!-- Klikateľná fajočka na PRAVEJ strane -->
                                 <div onclick="event.stopPropagation(); toggleProcessed('${item.id}')" class="w-7 h-7 rounded-lg flex items-center justify-center border ml-3 cursor-pointer shrink-0 ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}">
                                     <i data-lucide="check" class="w-3.5 h-3.5"></i>
                                 </div>
@@ -741,7 +742,7 @@
         lucide.createIcons();
     }
 
-    /* --- SWIPE GESTÁ A OPRAVA CITLIVOSTI --- */
+    /* --- SWIPE GESTÁ A RIADENIE ZOBRAZENIA POZADIA --- */
     let swipeStartX = 0;
     let swipeStartY = 0;
     let swipeCurrentX = 0;
@@ -763,12 +764,10 @@
         const diffX = touchX - swipeStartX;
         const diffY = touchY - swipeStartY;
 
-        // Ak uzívateľ scroluje vertikálne, ignorujeme swipe gestá
         if (!isHorizontalSwipe && Math.abs(diffY) > Math.abs(diffX)) {
             return;
         }
 
-        // Zmena smeru je primárne horizontálna (posun do strán)
         if (Math.abs(diffX) > 10) {
             isHorizontalSwipe = true;
         }
@@ -780,6 +779,7 @@
 
             if (content && bg) {
                 content.style.transform = `translateX(${diffX}px)`;
+                bg.style.opacity = '1'; // Pozadie zviditeľníme len pri aktívnom swipe
 
                 if (diffX > 0) {
                     bg.style.backgroundColor = 'rgba(16, 185, 129, 0.9)';
@@ -792,9 +792,14 @@
 
     function handleSwipeEnd(e, id, isProcessed) {
         const content = document.getElementById(`item-${id}`);
+        const bg = document.getElementById(`bg-${id}`);
+        
         if(content) {
             content.classList.remove('swiping');
             content.style.transform = '';
+        }
+        if(bg) {
+            bg.style.opacity = '0'; // Opäť skryjeme pozadie po ukončení gesta
         }
 
         const threshold = 75;
@@ -804,7 +809,6 @@
         } else if (isHorizontalSwipe && swipeCurrentX < -threshold) {
             handleDelete(id);
         } else if (!isHorizontalSwipe && Math.abs(swipeCurrentX) < 5) {
-            // Otvorí sa modal LEN ak nešlo o posun stránky ani swipe (čistý klik/tap)
             const endTouchY = e.changedTouches[0].clientY;
             if (Math.abs(endTouchY - swipeStartY) < 10) {
                 openModal(id);
