@@ -210,7 +210,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.4.1</h3>
+                <h3 class="text-xl font-extrabold">v2.5.0</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -220,12 +220,21 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.4.1</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.5.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Konečná oprava formátovania a spracovania dátumu bez časového posunu (UTC offset fix).</li>
-                    <li>Oprava chýb pri označovaní dnešného/včerajšieho dňa.</li>
+                    <li>Prechod na ukladanie plnej časovej pečiatky s časovým pásmom zariadenia.</li>
+                    <li>Spracovanie a zobrazenie dátumu podľa lokálneho časového pásma bez posunu.</li>
+                </ul>
+            </div>
+
+            <div class="border-t border-slate-100 dark:border-slate-800/60 pt-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.4.1</span>
+                </div>
+                <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Oprava formátovania a spracovania dátumu bez časového posunu.</li>
                 </ul>
             </div>
 
@@ -236,26 +245,6 @@
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
                     <li>Oprava posunu časových pásiem pri načítaní a zobrazení dátumov.</li>
                     <li>Pridané info tlačidlo s históriou verzii.</li>
-                </ul>
-            </div>
-
-            <div class="border-t border-slate-100 dark:border-slate-800/60 pt-3">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.3.0</span>
-                </div>
-                <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Vylepšené viacnásobné filtrovanie mesiacov a rokov.</li>
-                    <li>Optimizácia vyhľadávania a synchronizačnej radu.</li>
-                </ul>
-            </div>
-
-            <div class="border-t border-slate-100 dark:border-slate-800/60 pt-3">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.2.0</span>
-                </div>
-                <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridaný filter podkategórií na úvodnej obrazovke.</li>
-                    <li>Zrýchlenie odozvy a úprava tmavého režimu.</li>
                 </ul>
             </div>
         </div>
@@ -313,27 +302,23 @@
 
     let selectedMonths = [new Date().getMonth()];
 
-    // Čisté spracovanie dátumu bez prevodu časových pásiem
+    // Bezpečný zápis lokálneho dátumu vo formáte YYYY-MM-DD
     function getCleanDateStr(dStr) {
-        if (!dStr) return '';
+        if (!dStr) return getTodayStr();
         let s = String(dStr).trim();
         if (s.includes('T')) s = s.split('T')[0];
         if (s.includes(' ')) s = s.split(' ')[0];
         
-        // Ak dátum prichádza vo formáte DD.MM.YYYY
         if (s.includes('.')) {
             const p = s.split('.');
             if (p.length === 3) {
-                const day = p[0].padStart(2, '0');
-                const month = p[1].padStart(2, '0');
-                const year = p[2];
-                return `${year}-${month}-${day}`;
+                return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
             }
         }
         return s;
     }
 
-    // Získanie lokalizovaného DNEŠNÉHO dátumu ako YYYY-MM-DD
+    // Dnešný dátum lokalizovaný
     function getTodayStr() {
         const d = new Date();
         const year = d.getFullYear();
@@ -342,7 +327,7 @@
         return `${year}-${month}-${day}`;
     }
 
-    // Získanie VČERAJŠIEHO dátumu ako YYYY-MM-DD
+    // Včerajší dátum lokalizovaný
     function getYesterdayStr() {
         const d = new Date();
         d.setDate(d.getDate() - 1);
@@ -352,13 +337,29 @@
         return `${year}-${month}-${day}`;
     }
 
-    function openChangelogModal() {
-        document.getElementById('changelog-modal').classList.remove('hidden');
+    // Vytvorenie ISO reťazca s aktuálnym časom a časovým pásmom pre konkrétny dátum YYYY-MM-DD
+    function buildIsoWithTimezone(dateInputVal) {
+        const cleanD = getCleanDateStr(dateInputVal);
+        const now = new Date();
+        
+        const parts = cleanD.split('-');
+        if (parts.length === 3) {
+            // Nastavíme vybraný dátum a aktuálny lokálny čas
+            const localDate = new Date(
+                parseInt(parts[0]), 
+                parseInt(parts[1]) - 1, 
+                parseInt(parts[2]), 
+                now.getHours(), 
+                now.getMinutes(), 
+                now.getSeconds()
+            );
+            return localDate.toISOString(); // Zápis s presnou časovou pečiatkou
+        }
+        return now.toISOString();
     }
 
-    function closeChangelogModal() {
-        document.getElementById('changelog-modal').classList.add('hidden');
-    }
+    function openChangelogModal() { document.getElementById('changelog-modal').classList.remove('hidden'); }
+    function closeChangelogModal() { document.getElementById('changelog-modal').classList.add('hidden'); }
 
     function updateSyncUI(status) {
         const dot = document.getElementById('sync-dot');
@@ -455,6 +456,9 @@
         e.preventDefault();
         let existingId = document.getElementById('entry-id').value;
         let id = existingId || 'ID-' + Date.now();
+        
+        // Vytvorenie ISO timestampu s lokálnym časom a časovou zónou
+        const isoDateWithTz = buildIsoWithTimezone(document.getElementById('f-date').value);
         const cleanDate = getCleanDateStr(document.getElementById('f-date').value);
         
         let currentProcessed = false;
@@ -462,10 +466,17 @@
         if (localRecord) currentProcessed = localRecord.processed;
 
         const entry = { 
-            id: id, date: cleanDate, category: selectedCat, sub: selectedSub, 
+            id: id, 
+            date: cleanDate, 
+            timestamp: isoDateWithTz, // Uloženie presného času a časového pásma
+            category: selectedCat, 
+            sub: selectedSub, 
             amount: parseFloat(document.getElementById('f-amount').value), 
-            type: curType, note: document.getElementById('f-note').value, 
-            processed: currentProcessed, user: curUser, action: 'save' 
+            type: curType, 
+            note: document.getElementById('f-note').value, 
+            processed: currentProcessed, 
+            user: curUser, 
+            action: 'save' 
         };
 
         if (selectedCat) localStorage.setItem('f_last_cat', selectedCat);
