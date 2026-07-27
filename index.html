@@ -224,7 +224,7 @@
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Oprava posunu časových pásiem pri načítaní dátumov z DB.</li>
+                    <li>Oprava posunu časových pásiem pri načítaní a zobrazení dátumov.</li>
                     <li>Pridané info tlačidlo s históriou verzii.</li>
                 </ul>
             </div>
@@ -303,6 +303,24 @@
 
     let selectedMonths = [new Date().getMonth()];
 
+    // Pomocná funkcia na získanie čistého dátumu YYYY-MM-DD bez časového posunu
+    function getCleanDateStr(dStr) {
+        if (!dStr) return '';
+        let s = String(dStr).trim();
+        if (s.includes('T')) s = s.split('T')[0];
+        if (s.includes(' ')) s = s.split(' ')[0];
+        return s;
+    }
+
+    // Pomocná funkcia na dnešný lokalizovaný dátum YYYY-MM-DD
+    function getTodayStr() {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
     function openChangelogModal() {
         document.getElementById('changelog-modal').classList.remove('hidden');
     }
@@ -343,7 +361,7 @@
                     db = cloudData.map(c => {
                         const local = db.find(l => String(l.id) === String(c.id));
                         if (queuedIds.includes(String(c.id)) && local) return local;
-                        return c;
+                        return { ...c, date: getCleanDateStr(c.date) };
                     });
                     localStorage.setItem('f_db_v20', JSON.stringify(db)); 
                     renderList(); 
@@ -365,12 +383,9 @@
             amountInput.value = i.amount;
             document.getElementById('f-note').value = i.note || ''; 
             
-            // OŠETRENIE SPRÁVNEHO DÁTUMU PRI NAČÍTANÍ ZO ZÁZNAMU Z DTB
-            if (i.date) {
-                document.getElementById('f-date').value = String(i.date).split('T')[0];
-            } else {
-                document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
-            }
+            // PRESNÉ NAČÍTANIE DÁTUMU DO ZÁZNAMU BEZ CHYBY ČASOVÉHO PÁSMA
+            const cleanD = getCleanDateStr(i.date);
+            document.getElementById('f-date').value = cleanD || getTodayStr();
 
             setUser(i.user || 'Lukáš'); 
             setType(i.type || 'expense'); 
@@ -383,7 +398,7 @@
         } else {
             document.getElementById('entry-form').reset();
             entryIdInput.value = "";
-            document.getElementById('f-date').valueAsDate = new Date();
+            document.getElementById('f-date').value = getTodayStr();
             setUser(localStorage.getItem('f_last_user') || 'Lukáš'); 
             setType('expense');
             
@@ -410,7 +425,7 @@
         e.preventDefault();
         let existingId = document.getElementById('entry-id').value;
         let id = existingId || 'ID-' + Date.now();
-        const cleanDate = document.getElementById('f-date').value;
+        const cleanDate = getCleanDateStr(document.getElementById('f-date').value);
         
         let currentProcessed = false;
         const localRecord = db.find(x => String(x.id) === String(id));
@@ -541,18 +556,17 @@
         }
     }
 
-    // BEZPOSUNOVÁ FUNKCIA PRE DÁTUMY (Ošetruje časové pásma)
+    // BEZPOSUNOVÉ FORMÁTOVANIE DÁTUMU PRE PREHĽAD TRANSAKCIÍ
     function formatDayLabel(dateStr) {
-        if (!dateStr) return 'Neznámy dátum';
-        
-        const now = new Date();
-        const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + String(yesterday.getDate()).padStart(2, '0');
+        const cleanDate = getCleanDateStr(dateStr);
+        if (!cleanDate) return 'Neznámy dátum';
 
-        const cleanDate = String(dateStr).split('T')[0];
+        const todayStr = getTodayStr();
+        
+        const yDate = new Date();
+        yDate.setDate(yDate.getDate() - 1);
+        const yesterdayStr = `${yDate.getFullYear()}-${String(yDate.getMonth() + 1).padStart(2, '0')}-${String(yDate.getDate()).padStart(2, '0')}`;
+
         if (cleanDate === todayStr) return 'Dnes';
         if (cleanDate === yesterdayStr) return 'Včera';
 
@@ -569,7 +583,7 @@
         const selYear = parseInt(document.getElementById('filter-year').value);
         
         let currentFiltered = db.filter(d => { 
-            const cleanDate = d.date ? String(d.date).split('T')[0] : '';
+            const cleanDate = getCleanDateStr(d.date);
             const parts = cleanDate.split('-');
             if (parts.length === 3) {
                 const itemYear = parseInt(parts[0]);
@@ -607,15 +621,15 @@
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
         
         const sortedItems = [...currentFiltered].sort((a, b) => {
-            const dateA = a.date ? String(a.date).split('T')[0] : '';
-            const dateB = b.date ? String(b.date).split('T')[0] : '';
+            const dateA = getCleanDateStr(a.date);
+            const dateB = getCleanDateStr(b.date);
             if (dateA !== dateB) return dateB.localeCompare(dateA);
             return String(b.id).localeCompare(String(a.id));
         });
 
         const grouped = {};
         sortedItems.forEach(item => {
-            const dayKey = item.date ? String(item.date).split('T')[0] : 'Neznámy dátum';
+            const dayKey = getCleanDateStr(item.date) || 'Neznámy dátum';
             if (!grouped[dayKey]) grouped[dayKey] = [];
             grouped[dayKey].push(item);
         });
@@ -758,7 +772,7 @@
         renderMonthChips();
 
         const years = [...new Set([now.getFullYear(), ...db.map(x => {
-            const dateParts = x.date ? String(x.date).split('T')[0].split('-') : [];
+            const dateParts = getCleanDateStr(x.date).split('-');
             return dateParts.length === 3 ? parseInt(dateParts[0]) : now.getFullYear();
         })])].sort((a,b) => b-a);
 
