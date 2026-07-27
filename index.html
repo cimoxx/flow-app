@@ -156,7 +156,7 @@
                 <button id="clear-cat-filter" onclick="resetCategoryFilter()" class="hidden text-[10px] font-extrabold text-amber-500 uppercase tracking-wider">Zrušiť filter X</button>
             </div>
         </div>
-        <div id="transaction-list" class="space-y-1"></div>
+        <div id="transaction-list" class="space-y-4"></div>
     </main>
 
     <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-nav flex justify-around items-center h-16 z-30">
@@ -474,6 +474,19 @@
         }
     }
 
+    function formatDayLabel(dateStr) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        if (dateStr === todayStr) return 'Dnes';
+        if (dateStr === yesterdayStr) return 'Včera';
+
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric' });
+    }
+
     function renderList() {
         const list = document.getElementById('transaction-list');
         const selYear = parseInt(document.getElementById('filter-year').value);
@@ -515,21 +528,55 @@
 
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
         
-        list.innerHTML = currentFiltered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(item => {
-            const formattedDate = new Date(item.date).toLocaleDateString('sk-SK');
-            return `
-            <div class="transaction-item p-4 flex items-center justify-between ${item.processed ? 'processed' : ''}">
-                <div class="flex-1" onclick="openModal('${item.id}')">
-                    <div class="flex justify-between items-center pr-3">
-                        <span class="font-bold text-xs tracking-tight">${item.category}${item.sub ? ' <span class="text-slate-400 font-medium">/</span> '+item.sub : ''}</span>
-                        <span class="font-extrabold text-xs ${item.type === 'income' ? 'text-emerald-500' : ''}">${item.amount.toFixed(2)}€</span>
-                    </div>
-                    <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${formattedDate} ${item.note ? '• '+item.note : ''}</div>
+        // 6. ZORADENIE PODĽA DÁTUMU A ID/ČASU ZÁPISU (NAJNOVŠIE HORE)
+        const sortedItems = [...currentFiltered].sort((a, b) => {
+            const dateDiff = new Date(b.date) - new Date(a.date);
+            if (dateDiff !== 0) return dateDiff;
+            return String(b.id).localeCompare(String(a.id));
+        });
+
+        // 7. ZOSKUPENIE PODĽA DNÍ
+        const grouped = {};
+        sortedItems.forEach(item => {
+            const dayKey = item.date ? item.date.split('T')[0] : 'Neznámy dátum';
+            if (!grouped[dayKey]) grouped[dayKey] = [];
+            grouped[dayKey].push(item);
+        });
+
+        if (Object.keys(grouped).length === 0) {
+            list.innerHTML = `<div class="text-center py-8 text-slate-400 font-extrabold text-xs uppercase">Žiadne transakcie</div>`;
+            return;
+        }
+
+        let html = '';
+        Object.keys(grouped).forEach(dayKey => {
+            const dayItems = grouped[dayKey];
+            const daySum = dayItems.reduce((acc, curr) => curr.type === 'income' ? acc + parseFloat(curr.amount) : acc - parseFloat(curr.amount), 0);
+            
+            html += `
+            <div class="day-group mb-3">
+                <div class="flex justify-between items-center px-2 py-1 mb-1 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                    <span>${formatDayLabel(dayKey)}</span>
+                    <span class="${daySum >= 0 ? 'text-emerald-500' : 'text-slate-400'}">${daySum >= 0 ? '+' : ''}${daySum.toFixed(2)} €</span>
                 </div>
-                <button type="button" onclick="toggleProcessed('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}"><i data-lucide="check" class="w-4 h-4"></i></button>
+                <div class="space-y-1">
+                    ${dayItems.map(item => `
+                        <div class="transaction-item p-4 flex items-center justify-between ${item.processed ? 'processed' : ''}">
+                            <div class="flex-1" onclick="openModal('${item.id}')">
+                                <div class="flex justify-between items-center pr-3">
+                                    <span class="font-bold text-xs tracking-tight">${item.category}${item.sub ? ' <span class="text-slate-400 font-medium">/</span> '+item.sub : ''}</span>
+                                    <span class="font-extrabold text-xs ${item.type === 'income' ? 'text-emerald-500' : ''}">${parseFloat(item.amount).toFixed(2)}€</span>
+                                </div>
+                                <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${item.note ? item.note : ''}</div>
+                            </div>
+                            <button type="button" onclick="toggleProcessed('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}"><i data-lucide="check" class="w-4 h-4"></i></button>
+                        </div>
+                    `).join('')}
+                </div>
             </div>`;
-        }).join('');
-        
+        });
+
+        list.innerHTML = html;
         lucide.createIcons();
     }
 
