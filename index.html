@@ -47,7 +47,7 @@
 
         h2, .font-bold, #display-balance { font-family: 'Outfit', sans-serif; }
         .app-container { background-color: var(--bg-card); color: var(--text-main); }
-        .processed { opacity: 0.3; filter: grayscale(1); }
+        .processed { opacity: 0.35; filter: grayscale(1); }
         
         .toggle-container {
             display: flex;
@@ -108,7 +108,40 @@
             font-weight: 600;
         }
 
-        .transaction-item { background: var(--bg-card); border-bottom: 1px solid var(--border); }
+        /* --- SWIPE GESTÁ STYLY --- */
+        .swipe-wrapper {
+            position: relative;
+            overflow: hidden;
+            border-radius: 14px;
+            margin-bottom: 6px;
+            touch-action: pan-y;
+        }
+        .swipe-bg {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-weight: 800;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: white;
+            transition: background-color 0.2s ease;
+        }
+        .swipe-content {
+            position: relative;
+            z-index: 10;
+            background: var(--bg-card);
+            transition: transform 0.2s ease-out;
+            will-change: transform;
+            user-select: none;
+        }
+        .swipe-content.swiping {
+            transition: none !important;
+        }
+
         #display-balance { letter-spacing: -0.04em; }
 
         .month-chip { transition: all 0.2s; flex-shrink: 0; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); border-radius: 10px; padding: 6px 12px; scroll-margin: 0 40px; }
@@ -210,7 +243,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.5.1</h3>
+                <h3 class="text-xl font-extrabold">v2.6.0</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -220,21 +253,21 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.5.1</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.6.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Korekcia UTC posunu Google Apps Scriptu (pripočítanie lokálnej zóny).</li>
-                    <li>Odosielanie dátumu spolu s lokálnym časom zápisu.</li>
+                    <li>Pridané natívne swipe gestá na transakciách (Doprava = Označiť, Doľava = Vymazať).</li>
+                    <li>Optimalizovaný UI/UX zážitok pre mobilné zariadenia.</li>
                 </ul>
             </div>
 
             <div class="border-t border-slate-100 dark:border-slate-800/60 pt-3">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.5.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.5.1</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridaná podpora pre časové pečiatky.</li>
+                    <li>Korekcia UTC posunu Google Apps Scriptu.</li>
                 </ul>
             </div>
         </div>
@@ -292,16 +325,13 @@
 
     let selectedMonths = [new Date().getMonth()];
 
-    // Bezpečný prepočet dátumu z Google Apps Script s korekciou UTC posunu
     function getCleanDateStr(dStr) {
         if (!dStr) return getTodayStr();
         let s = String(dStr).trim();
         
-        // Ak Google Apps Script poslal plný ISO reťazec s časom (napr. 2026-07-26T22:00:00.000Z)
         if (s.includes('T') || s.includes('Z')) {
             const parsed = new Date(s);
             if (!isNaN(parsed.getTime())) {
-                // Prepočet z UTC na lokálny čas prehliadača
                 const year = parsed.getFullYear();
                 const month = String(parsed.getMonth() + 1).padStart(2, '0');
                 const day = String(parsed.getDate()).padStart(2, '0');
@@ -321,7 +351,6 @@
         return s;
     }
 
-    // Dnešný dátum lokalizovaný
     function getTodayStr() {
         const d = new Date();
         const year = d.getFullYear();
@@ -330,7 +359,6 @@
         return `${year}-${month}-${day}`;
     }
 
-    // Včerajší dátum lokalizovaný
     function getYesterdayStr() {
         const d = new Date();
         d.setDate(d.getDate() - 1);
@@ -340,7 +368,6 @@
         return `${year}-${month}-${day}`;
     }
 
-    // Formátovanie dátumu s lokálnym časom pre Google Sheets
     function buildDateWithCurrentTime(dateInputVal) {
         const cleanD = getCleanDateStr(dateInputVal);
         const now = new Date();
@@ -401,6 +428,7 @@
 
         if(id) {
             const i = db.find(x => String(x.id) === String(id));
+            if(!i) return;
             entryIdInput.value = i.id; 
             amountInput.value = i.amount;
             document.getElementById('f-note').value = i.note || ''; 
@@ -481,7 +509,17 @@
         processSyncQueue();
     }
 
-    function handleDelete() { const id = document.getElementById('entry-id').value; if(id && confirm('Zmazať?')) { syncQueue.push({ id: id, action: 'delete' }); db = db.filter(x => String(x.id) !== String(id)); saveData(false); closeModal(); renderList(); processSyncQueue(); } }
+    function handleDelete(idToDelete = null) { 
+        const id = idToDelete || document.getElementById('entry-id').value; 
+        if(id && confirm('Zmazať transakciu?')) { 
+            syncQueue.push({ id: id, action: 'delete' }); 
+            db = db.filter(x => String(x.id) !== String(id)); 
+            saveData(false); 
+            closeModal(); 
+            renderList(); 
+            processSyncQueue(); 
+        } 
+    }
 
     function renderManageCats() {
         document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `
@@ -678,15 +716,27 @@
                 </div>
                 <div class="space-y-1">
                     ${dayItems.map(item => `
-                        <div class="transaction-item p-4 flex items-center justify-between ${item.processed ? 'processed' : ''}">
-                            <div class="flex-1" onclick="openModal('${item.id}')">
-                                <div class="flex justify-between items-center pr-3">
-                                    <span class="font-bold text-xs tracking-tight">${item.category}${item.sub ? ' <span class="text-slate-400 font-medium">/</span> '+item.sub : ''}</span>
-                                    <span class="font-extrabold text-xs ${item.type === 'income' ? 'text-emerald-500' : ''}">${parseFloat(item.amount).toFixed(2)}€</span>
-                                </div>
-                                <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${item.note ? item.note : ''}</div>
+                        <div class="swipe-wrapper" id="wrapper-${item.id}">
+                            <div class="swipe-bg" id="bg-${item.id}">
+                                <span class="left-action flex items-center gap-1.5"><i data-lucide="check" class="w-4 h-4"></i> <span id="bg-left-text-${item.id}">Zapísaná</span></span>
+                                <span class="right-action flex items-center gap-1.5"><span>Vymazať</span> <i data-lucide="trash-2" class="w-4 h-4"></i></span>
                             </div>
-                            <button type="button" onclick="toggleProcessed('${item.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}"><i data-lucide="check" class="w-4 h-4"></i></button>
+                            <div class="swipe-content p-4 flex items-center justify-between ${item.processed ? 'processed' : ''}" 
+                                 id="item-${item.id}"
+                                 ontouchstart="handleSwipeStart(event, '${item.id}')"
+                                 ontouchmove="handleSwipeMove(event, '${item.id}')"
+                                 ontouchend="handleSwipeEnd(event, '${item.id}', ${item.processed})">
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-center pr-3">
+                                        <span class="font-bold text-xs tracking-tight">${item.category}${item.sub ? ' <span class="text-slate-400 font-medium">/</span> '+item.sub : ''}</span>
+                                        <span class="font-extrabold text-xs ${item.type === 'income' ? 'text-emerald-500' : ''}">${parseFloat(item.amount).toFixed(2)}€</span>
+                                    </div>
+                                    <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${item.note ? item.note : ''}</div>
+                                </div>
+                                <div class="w-7 h-7 rounded-lg flex items-center justify-center border ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}">
+                                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                </div>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
@@ -695,6 +745,77 @@
 
         list.innerHTML = html;
         lucide.createIcons();
+    }
+
+    /* --- SWIPE GESTÁ LOGIKA --- */
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+    let swipeCurrentX = 0;
+    let isSwiping = false;
+
+    function handleSwipeStart(e, id) {
+        swipeStartX = e.touches[0].clientX;
+        swipeStartY = e.touches[0].clientY;
+        swipeCurrentX = 0;
+        isSwiping = false;
+
+        const content = document.getElementById(`item-${id}`);
+        if(content) content.classList.add('swiping');
+    }
+
+    function handleSwipeMove(e, id) {
+        const touchX = e.touches[0].clientX;
+        const touchY = e.touches[0].clientY;
+        const diffX = touchX - swipeStartX;
+        const diffY = touchY - swipeStartY;
+
+        // Ak používateľ skôr skroluje vertikálne, ignorujeme horizontal swipe
+        if (!isSwiping && Math.abs(diffY) > Math.abs(diffX)) {
+            return;
+        }
+
+        isSwiping = true;
+        swipeCurrentX = diffX;
+
+        const content = document.getElementById(`item-${id}`);
+        const bg = document.getElementById(`bg-${id}`);
+
+        if (content && bg) {
+            content.style.transform = `translateX(${diffX}px)`;
+
+            if (diffX > 0) {
+                // Posun Doprava (Zelená - Zapísaná)
+                bg.style.backgroundColor = 'rgba(16, 185, 129, 0.9)';
+            } else if (diffX < 0) {
+                // Posun Doľava (Červená - Vymazať)
+                bg.style.backgroundColor = 'rgba(239, 68, 68, 0.9)';
+            }
+        }
+    }
+
+    function handleSwipeEnd(e, id, isProcessed) {
+        const content = document.getElementById(`item-${id}`);
+        if(content) {
+            content.classList.remove('swiping');
+            content.style.transform = '';
+        }
+
+        const threshold = 75; // minimálna vzdialenosť pre aktiváciu v px
+
+        if (swipeCurrentX > threshold) {
+            // Swipe Doprava -> Označiť / Odznačiť
+            toggleProcessed(id);
+        } else if (swipeCurrentX < -threshold) {
+            // Swipe Doľava -> Vymazať
+            handleDelete(id);
+        } else if (Math.abs(swipeCurrentX) < 5) {
+            // Obyčajné klepnutie (Tap) -> Otvoriť Editáciu
+            openModal(id);
+        }
+
+        swipeStartX = 0;
+        swipeCurrentX = 0;
+        isSwiping = false;
     }
 
     function renderSummary(sums, statusFiltered) {
