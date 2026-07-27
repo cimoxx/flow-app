@@ -210,7 +210,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.4.0</h3>
+                <h3 class="text-xl font-extrabold">v2.4.1</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -220,8 +220,18 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.4.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.4.1</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
+                </div>
+                <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Konečná oprava formátovania a spracovania dátumu bez časového posunu (UTC offset fix).</li>
+                    <li>Oprava chýb pri označovaní dnešného/včerajšieho dňa.</li>
+                </ul>
+            </div>
+
+            <div class="border-t border-slate-100 dark:border-slate-800/60 pt-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.4.0</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
                     <li>Oprava posunu časových pásiem pri načítaní a zobrazení dátumov.</li>
@@ -303,18 +313,39 @@
 
     let selectedMonths = [new Date().getMonth()];
 
-    // Pomocná funkcia na získanie čistého dátumu YYYY-MM-DD bez časového posunu
+    // Čisté spracovanie dátumu bez prevodu časových pásiem
     function getCleanDateStr(dStr) {
         if (!dStr) return '';
         let s = String(dStr).trim();
         if (s.includes('T')) s = s.split('T')[0];
         if (s.includes(' ')) s = s.split(' ')[0];
+        
+        // Ak dátum prichádza vo formáte DD.MM.YYYY
+        if (s.includes('.')) {
+            const p = s.split('.');
+            if (p.length === 3) {
+                const day = p[0].padStart(2, '0');
+                const month = p[1].padStart(2, '0');
+                const year = p[2];
+                return `${year}-${month}-${day}`;
+            }
+        }
         return s;
     }
 
-    // Pomocná funkcia na dnešný lokalizovaný dátum YYYY-MM-DD
+    // Získanie lokalizovaného DNEŠNÉHO dátumu ako YYYY-MM-DD
     function getTodayStr() {
         const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // Získanie VČERAJŠIEHO dátumu ako YYYY-MM-DD
+    function getYesterdayStr() {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
@@ -383,7 +414,6 @@
             amountInput.value = i.amount;
             document.getElementById('f-note').value = i.note || ''; 
             
-            // PRESNÉ NAČÍTANIE DÁTUMU DO ZÁZNAMU BEZ CHYBY ČASOVÉHO PÁSMA
             const cleanD = getCleanDateStr(i.date);
             document.getElementById('f-date').value = cleanD || getTodayStr();
 
@@ -556,16 +586,12 @@
         }
     }
 
-    // BEZPOSUNOVÉ FORMÁTOVANIE DÁTUMU PRE PREHĽAD TRANSAKCIÍ
     function formatDayLabel(dateStr) {
         const cleanDate = getCleanDateStr(dateStr);
         if (!cleanDate) return 'Neznámy dátum';
 
         const todayStr = getTodayStr();
-        
-        const yDate = new Date();
-        yDate.setDate(yDate.getDate() - 1);
-        const yesterdayStr = `${yDate.getFullYear()}-${String(yDate.getMonth() + 1).padStart(2, '0')}-${String(yDate.getDate()).padStart(2, '0')}`;
+        const yesterdayStr = getYesterdayStr();
 
         if (cleanDate === todayStr) return 'Dnes';
         if (cleanDate === yesterdayStr) return 'Včera';
@@ -587,7 +613,7 @@
             const parts = cleanDate.split('-');
             if (parts.length === 3) {
                 const itemYear = parseInt(parts[0]);
-                const itemMonth = parseInt(parts[1]) - 1; // 0-based index
+                const itemMonth = parseInt(parts[1]) - 1; 
                 const monthMatches = selectedMonths.length === 0 || selectedMonths.includes(itemMonth);
                 return monthMatches && itemYear === selYear;
             }
