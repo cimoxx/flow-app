@@ -114,7 +114,6 @@
         .month-chip { transition: all 0.2s; flex-shrink: 0; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); border-radius: 10px; padding: 6px 12px; scroll-margin: 0 40px; }
         .month-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
         
-        /* Zabezpečí plynulé skrolovanie pri centrovaní mesiaca */
         #filter-months-container {
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
@@ -466,7 +465,6 @@
         }).join('');
     }
 
-    // Automatické centrovanie vybraného mesiaca uprostred horizontálneho carouselu
     function scrollToActiveMonth(monthIdx) {
         const activeChip = document.getElementById(`m-chip-${monthIdx}`);
         if (activeChip) {
@@ -474,36 +472,49 @@
         }
     }
 
+    // BEZPOSUNOVÁ FUNKCIA PRE DÁTUMY (Ošetruje časové pásma)
     function formatDayLabel(dateStr) {
-        const todayStr = new Date().toISOString().split('T')[0];
+        if (!dateStr) return 'Neznámy dátum';
+        
+        const now = new Date();
+        const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const yesterdayStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + String(yesterday.getDate()).padStart(2, '0');
 
-        if (dateStr === todayStr) return 'Dnes';
-        if (dateStr === yesterdayStr) return 'Včera';
+        const cleanDate = dateStr.split('T')[0];
+        if (cleanDate === todayStr) return 'Dnes';
+        if (cleanDate === yesterdayStr) return 'Včera';
 
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric' });
+        const parts = cleanDate.split('-');
+        if (parts.length === 3) {
+            return `${parseInt(parts[2])}. ${parseInt(parts[1])}. ${parts[0]}`;
+        }
+
+        return cleanDate;
     }
 
     function renderList() {
         const list = document.getElementById('transaction-list');
         const selYear = parseInt(document.getElementById('filter-year').value);
         
-        // 1. ZÁKLADNÉ FILTROVANIE PODĽA ČASU
         let currentFiltered = db.filter(d => { 
-            const dt = new Date(d.date); 
-            const monthMatches = selectedMonths.length === 0 || selectedMonths.includes(dt.getMonth());
-            return monthMatches && dt.getFullYear() === selYear; 
+            const cleanDate = d.date ? d.date.split('T')[0] : '';
+            const parts = cleanDate.split('-');
+            if (parts.length === 3) {
+                const itemYear = parseInt(parts[0]);
+                const itemMonth = parseInt(parts[1]) - 1; // 0-based index
+                const monthMatches = selectedMonths.length === 0 || selectedMonths.includes(itemMonth);
+                return monthMatches && itemYear === selYear;
+            }
+            return false;
         });
         
-        // 2. FILTROVANIE PODĽA STAVU (Nové vs Všetky)
         if (currentStatusFilter === 'unprocessed') {
             currentFiltered = currentFiltered.filter(d => !d.processed);
         }
 
-        // 3. VÝPOČET SUMÁROV PRE HORIZONTÁLNE KARTY (výdavky podľa času + stavu)
         const sums = {}; 
         currentFiltered.forEach(item => { 
             if (item.type === 'expense') {
@@ -515,7 +526,6 @@
         });
         renderSummary(sums, currentFiltered);
 
-        // 4. APLIKÁCIA FILTROV KATEGÓRIÍ A PODKATEGÓRIÍ PRE VÝSLEDNÝ ZOZNAM AJ HORNE ČÍSLO
         if (activeCategoryFilter) {
             currentFiltered = currentFiltered.filter(d => d.category === activeCategoryFilter);
             if (window.activeSubFilter) {
@@ -523,19 +533,17 @@
             }
         }
 
-        // 5. AKTUALIZÁCIA HORNÉHO CELKOVÉHO ZOSTATKU
         updateTotals(currentFiltered);
 
         document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
         
-        // 6. ZORADENIE PODĽA DÁTUMU A ID/ČASU ZÁPISU (NAJNOVŠIE HORE)
         const sortedItems = [...currentFiltered].sort((a, b) => {
-            const dateDiff = new Date(b.date) - new Date(a.date);
-            if (dateDiff !== 0) return dateDiff;
+            const dateA = a.date ? a.date.split('T')[0] : '';
+            const dateB = b.date ? b.date.split('T')[0] : '';
+            if (dateA !== dateB) return dateB.localeCompare(dateA);
             return String(b.id).localeCompare(String(a.id));
         });
 
-        // 7. ZOSKUPENIE PODĽA DNÍ
         const grouped = {};
         sortedItems.forEach(item => {
             const dayKey = item.date ? item.date.split('T')[0] : 'Neznámy dátum';
@@ -680,14 +688,18 @@
         
         renderMonthChips();
 
-        const years = [...new Set([now.getFullYear(), ...db.map(x => new Date(x.date).getFullYear())])].sort((a,b) => b-a);
+        const years = [...new Set([now.getFullYear(), ...db.map(x => {
+            const dateParts = x.date ? x.date.split('T')[0].split('-') : [];
+            return dateParts.length === 3 ? parseInt(dateParts[0]) : now.getFullYear();
+        })])].sort((a,b) => b-a);
+
         ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
         
-        // Spustí vycentrovanie hneď pri štarte aplikácie na aktuálny mesiac
         if (selectedMonths.length > 0) {
             setTimeout(() => scrollToActiveMonth(selectedMonths[0]), 200);
         }
     }
+
     function setUser(u) { curUser = u; localStorage.setItem('f_last_user', u); ['Lukáš', 'Zdenka'].forEach(user => { const btn = document.getElementById(`u-${user}`); if(btn) btn.className = user === u ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }); }
     function setType(t) { curType = t; document.getElementById('t-ex').className = t === 'expense' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-red-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; document.getElementById('t-in').className = t === 'income' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }
     
