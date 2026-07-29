@@ -344,7 +344,7 @@
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridaná metrika <b>Burn Rate</b> (priemerné denné a odhadované mesačné výdavky) do sekcie analýz.</li>
+                    <li>Pridaná metrika <b>Burn Rate</b> (priemerné denné a odhadované mesačné výdavky) a dedikovaný stĺpcový graf mesačného tempa na spodku analýz.</li>
                     <li>Optimalizovaný výpočet časových úsekov na základe aktívneho filtra obdobia.</li>
                 </ul>
             </div>
@@ -413,6 +413,7 @@
     let currentStatusFilter = 'unprocessed', activeSettingsCat = null;
     window.activeSubFilter = null;
     let analyticsChartInstance = null;
+    let burnRateChartInstance = null;
     
     let selectedChartPeriod = 'current_month';
     let selectedChartMonths = []; // Filtrovanie konkrétnych mesiacov pri grafe
@@ -1202,28 +1203,8 @@
             `;
         }
 
+        /* BURN RATE A GRAF NA SPODKU POD TABUĽKOU A CELKOVÝMI VÝDAVKAMI */
         statsContainer.innerHTML = `
-            <!-- BURN RATE KARTA -->
-            <div class="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 p-3.5 rounded-2xl border border-amber-500/20 space-y-2">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-1.5">
-                        <i data-lucide="flame" class="w-4 h-4 text-amber-500"></i>
-                        <span class="text-[9px] font-black uppercase text-amber-500 tracking-wider">Burn Rate (Tempo výdavkov)</span>
-                    </div>
-                    <span class="text-[8.5px] font-bold text-slate-400 uppercase">${Math.round(periodDays)} dní v období</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2 pt-1">
-                    <div>
-                        <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Priemer / Deň</span>
-                        <div class="text-base font-extrabold text-slate-800 dark:text-slate-100">${dailyBurnRate.toFixed(2)} €</div>
-                    </div>
-                    <div>
-                        <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Odhad / Mesiac</span>
-                        <div class="text-base font-extrabold text-amber-500">${monthlyBurnRate.toFixed(2)} €</div>
-                    </div>
-                </div>
-            </div>
-
             <div class="grid grid-cols-2 gap-2">
                 <div class="bg-slate-100 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200/50 dark:border-slate-800">
                     <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider">Celkové Výdavky</span>
@@ -1234,9 +1215,113 @@
                     <div class="text-sm font-extrabold text-emerald-500">${totalInc.toFixed(2)} €</div>
                 </div>
             </div>
+
             ${breakdownHtml}
+
+            <!-- BURN RATE KARTA VO FORMÁTE NA SPODKU S MESAČNÝM GRAFOM -->
+            <div class="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 p-3.5 rounded-2xl border border-amber-500/20 space-y-3 mt-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="flame" class="w-4 h-4 text-amber-500"></i>
+                        <span class="text-[9px] font-black uppercase text-amber-500 tracking-wider">Burn Rate (Tempo výdavkov)</span>
+                    </div>
+                    <span class="text-[8.5px] font-bold text-slate-400 uppercase">${Math.round(periodDays)} dní v období</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Priemer / Deň</span>
+                        <div class="text-base font-extrabold text-slate-800 dark:text-slate-100">${dailyBurnRate.toFixed(2)} €</div>
+                    </div>
+                    <div>
+                        <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Odhad / Mesiac</span>
+                        <div class="text-base font-extrabold text-amber-500">${monthlyBurnRate.toFixed(2)} €</div>
+                    </div>
+                </div>
+
+                <!-- STĹPCOVÝ GRAF PRE MESAČNÝ BURN RATE -->
+                <div class="pt-2 border-t border-amber-500/20">
+                    <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block mb-2">Mesačný Burn Rate (Priemer €/deň)</span>
+                    <div class="h-32 relative">
+                        <canvas id="burnRateChart"></canvas>
+                    </div>
+                </div>
+            </div>
         `;
         lucide.createIcons();
+
+        /* Vykreslenie stĺpcového grafu Burn Rate po mesiacoch */
+        renderBurnRateChart(filtered, userFilter, textColor, isDark);
+    }
+
+    function renderBurnRateChart(filteredData, userFilter, textColor, isDark) {
+        const monthNames = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
+        const monthlyExp = new Array(12).fill(0);
+        const monthlyDays = new Array(12).fill(30);
+
+        const now = new Date();
+        const curYear = now.getFullYear();
+
+        // Nastavíme presný počet dní pre jednotlivé mesiace aktuálneho/vybraného roka
+        for(let m = 0; m < 12; m++) {
+            if (m === now.getMonth()) {
+                monthlyDays[m] = Math.max(1, now.getDate()); // pre prebiehajúci mesiac len uplynuté dni
+            } else {
+                monthlyDays[m] = new Date(curYear, m + 1, 0).getDate(); // počet dní v danom mesiaci
+            }
+        }
+
+        filteredData.forEach(item => {
+            if (item.type === 'expense') {
+                const cleanD = getCleanDateStr(item.date);
+                const parts = cleanD.split('-');
+                if (parts.length === 3) {
+                    const m = parseInt(parts[1]) - 1;
+                    monthlyExp[m] += parseFloat(item.amount);
+                }
+            }
+        });
+
+        // Výpočet denných priemerov po mesiacoch (€/deň)
+        const monthlyBurnRates = monthlyExp.map((exp, idx) => {
+            const days = monthlyDays[idx] || 30;
+            return parseFloat((exp / days).toFixed(2));
+        });
+
+        const ctx = document.getElementById('burnRateChart');
+        if (!ctx) return;
+
+        if (burnRateChartInstance) { burnRateChartInstance.destroy(); }
+
+        burnRateChartInstance = new Chart(ctx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: monthNames,
+                datasets: [{
+                    label: 'Burn Rate (€/deň)',
+                    data: monthlyBurnRates,
+                    backgroundColor: '#f59e0b',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.raw.toFixed(2)} € / deň`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: textColor, font: { size: 8, weight: '700' } }, grid: { display: false } },
+                    y: { ticks: { color: textColor, font: { size: 8 } }, grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' } }
+                }
+            }
+        });
     }
 
     function saveCurrentPreset() {
