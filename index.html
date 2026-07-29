@@ -153,7 +153,10 @@
         .period-chip { transition: all 0.2s; flex-shrink: 0; font-size: 9px; font-weight: 800; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); border-radius: 8px; padding: 4px 10px; }
         .period-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
 
-        #filter-months-container {
+        .chart-month-chip { transition: all 0.2s; flex-shrink: 0; font-size: 8.5px; font-weight: 800; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); border-radius: 8px; padding: 3px 8px; }
+        .chart-month-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
+
+        #filter-months-container, #chart-months-container {
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
         }
@@ -220,8 +223,8 @@
         <div id="presets-container" class="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5"></div>
 
         <!-- Výber časového obdobia pre graf -->
-        <div>
-            <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">Obdobie Grafu</label>
+        <div class="space-y-1.5">
+            <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider px-1">Obdobie Grafu</label>
             <div class="flex gap-1 overflow-x-auto no-scrollbar py-0.5">
                 <button type="button" onclick="setChartPeriod('current_month')" id="p-chip-current_month" class="period-chip active">Tento mesiac</button>
                 <button type="button" onclick="setChartPeriod('3m')" id="p-chip-3m" class="period-chip">3 Mesiace</button>
@@ -229,15 +232,24 @@
                 <button type="button" onclick="setChartPeriod('year')" id="p-chip-year" class="period-chip">Tento rok</button>
                 <button type="button" onclick="setChartPeriod('all')" id="p-chip-all" class="period-chip">Všetko</button>
             </div>
+            <!-- Filtrovanie konkrétnych mesiacov pre graf -->
+            <div id="chart-months-container" class="flex gap-1 overflow-x-auto no-scrollbar py-1 border-t border-slate-100 dark:border-slate-800/80 pt-1.5"></div>
         </div>
 
         <!-- Ovládacie prvky grafu -->
-        <div class="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 text-[10px]">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-100 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 text-[10px]">
             <div>
                 <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">Typ Grafu</label>
                 <select id="chart-type" onchange="updateAnalytics()" class="w-full p-2 outline-none text-xs">
                     <option value="doughnut">Koláčový</option>
                     <option value="bar">Stĺpcový</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">Úroveň Dát</label>
+                <select id="chart-level-mode" onchange="updateAnalytics()" class="w-full p-2 outline-none text-xs">
+                    <option value="category">Kategórie</option>
+                    <option value="sub">Podkategórie</option>
                 </select>
             </div>
             <div>
@@ -318,7 +330,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.8.0</h3>
+                <h3 class="text-xl font-extrabold">v2.9.0</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -328,12 +340,13 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.8.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.9.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridané rýchle tlačidlá obdobia pre graf.</li>
-                    <li>Zobrazenie percentuálneho podielu kategórií v grafe aj v detailnom prehlade.</li>
+                    <li>Pridaná podpora pre filtrovanie konkrétnych mesiacov pri grafe.</li>
+                    <li>Pridané zobrazenie grafu pre podkategórie.</li>
+                    <li>Pridaná možnosť úpravy/editácie názvu kategórií aj podkategórií v Admin zóne.</li>
                 </ul>
             </div>
         </div>
@@ -342,7 +355,7 @@
     </div>
 </div>
 
-<!-- OBRAZOVKA NASTAVENÍ -->
+<!-- OBRAZOVKA NASTAVENÍ (ADMIN ZÓNA) -->
 <div id="settings-screen" class="fixed inset-0 bg-white dark:bg-slate-900 z-50 hidden p-6 max-w-md mx-auto overflow-y-auto pb-24">
     <div id="settings-home">
         <div class="flex items-center gap-4 mb-6"><button onclick="showScreen('home')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 class="text-xl font-extrabold">Nastavenia</h2></div>
@@ -391,7 +404,9 @@
     let currentStatusFilter = 'unprocessed', activeSettingsCat = null;
     window.activeSubFilter = null;
     let analyticsChartInstance = null;
+    
     let selectedChartPeriod = 'current_month';
+    let selectedChartMonths = []; // Filtrovanie konkrétnych mesiacov pri grafe
 
     let selectedMonths = [new Date().getMonth()];
 
@@ -594,13 +609,17 @@
         } 
     }
 
+    /* --- ADMIN ZÓNA: SPRÁVA A EDITÁCIA KATEGÓRIÍ A PODKATEGÓRIÍ --- */
     function renderManageCats() {
         document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `
             <div class="flex items-center gap-2">
                 <div onclick="openCatDetail(${i})" class="flex-1 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between shadow-sm cursor-pointer active:scale-[0.98] transition-all">
-                    <div class="font-extrabold text-sm uppercase">${c.id}</div>
+                    <div class="font-extrabold text-sm uppercase flex items-center gap-2">
+                        <span>${c.id}</span>
+                    </div>
                     <div class="text-[9px] text-slate-300 uppercase font-black tracking-tighter">${c.subs.length} subs</div>
                 </div>
+                <button type="button" onclick="editCategoryName(${i})" class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-500"><i data-lucide="pencil" class="w-4 h-4"></i></button>
                 <div class="flex flex-col gap-1">
                     <button type="button" onclick="moveCat(${i}, -1)" class="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-up" class="w-3 h-3"></i></button>
                     <button type="button" onclick="moveCat(${i}, 1)" class="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-down" class="w-3 h-3"></i></button>
@@ -609,14 +628,36 @@
         lucide.createIcons();
     }
 
+    function editCategoryName(index) {
+        const oldName = categories[index].id;
+        const newName = prompt("Upravte názov kategórie:", oldName);
+        if (newName && newName.trim() !== "" && newName !== oldName) {
+            const trimmed = newName.trim();
+            // Aktualizujeme existujúce transakcie
+            db.forEach(item => {
+                if (item.category === oldName) item.category = trimmed;
+            });
+            categories[index].id = trimmed;
+            saveData(true);
+            renderManageCats();
+            renderCatGrid();
+            renderList();
+            updateAnalytics();
+        }
+    }
+
     function openCatDetail(index) { activeSettingsCat = index; document.getElementById('settings-home').classList.add('hidden'); document.getElementById('settings-cat-detail').classList.remove('hidden'); document.getElementById('detail-cat-title').innerText = categories[index].id; renderManageSubs(); }
+    
     function renderManageSubs() {
         const cat = categories[activeSettingsCat];
         document.getElementById('manage-subs-list').innerHTML = cat.subs.map((s, i) => `
             <div class="flex items-center gap-2">
                 <div class="flex-1 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between border border-transparent dark:border-slate-700">
                     <div class="font-bold text-xs uppercase">${s}</div>
-                    <button type="button" onclick="deleteSub(${i})" class="p-2 text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="editSubCategoryName(${i})" class="p-1.5 text-slate-400 hover:text-emerald-500"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                        <button type="button" onclick="deleteSub(${i})" class="p-1.5 text-red-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                    </div>
                 </div>
                 <div class="flex flex-col gap-1">
                     <button type="button" onclick="moveSub(${i}, -1)" class="p-1.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-up" class="w-2.5 h-2.5"></i></button>
@@ -624,6 +665,24 @@
                 </div>
             </div>`).join('');
         lucide.createIcons();
+    }
+
+    function editSubCategoryName(subIndex) {
+        const cat = categories[activeSettingsCat];
+        const oldName = cat.subs[subIndex];
+        const newName = prompt("Upravte názov podkategórie:", oldName);
+        if (newName && newName.trim() !== "" && newName !== oldName) {
+            const trimmed = newName.trim();
+            // Aktualizujeme existujúce transakcie
+            db.forEach(item => {
+                if (item.category === cat.id && item.sub === oldName) item.sub = trimmed;
+            });
+            cat.subs[subIndex] = trimmed;
+            saveData(true);
+            renderManageSubs();
+            renderList();
+            updateAnalytics();
+        }
     }
 
     function moveCat(i, dir) { if((dir === -1 && i > 0) || (dir === 1 && i < categories.length - 1)) { const temp = categories[i]; categories[i] = categories[i + dir]; categories[i + dir] = temp; saveData(true); renderManageCats(); renderCatGrid(); } }
@@ -677,6 +736,7 @@
             renderManageCats(); 
         } else if (s === 'analytics') {
             renderPresets();
+            renderChartMonthChips();
             updateAnalytics();
         } else {
             renderList();
@@ -716,6 +776,27 @@
         if (activeChip) {
             activeChip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         }
+    }
+
+    /* --- FILTROVANIE MESIACOV VO SEKCII GRAFOV --- */
+    function toggleChartMonthSelect(monthIdx) {
+        if (selectedChartMonths.includes(monthIdx)) {
+            selectedChartMonths = selectedChartMonths.filter(m => m !== monthIdx);
+        } else {
+            selectedChartMonths.push(monthIdx);
+        }
+        renderChartMonthChips();
+        updateAnalytics();
+    }
+
+    function renderChartMonthChips() {
+        const container = document.getElementById('chart-months-container');
+        if (!container) return;
+        const months = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
+        container.innerHTML = months.map((m, i) => {
+            const isActive = selectedChartMonths.includes(i);
+            return `<button type="button" onclick="toggleChartMonthSelect(${i})" class="chart-month-chip ${isActive ? 'active' : ''}">${m}</button>`;
+        }).join('');
     }
 
     function formatDayLabel(dateStr) {
@@ -846,9 +927,12 @@
         lucide.createIcons();
     }
 
-    /* --- LOGIKA PRE GRAFY A NÁHĽADY (VÝBER OBDOBIA & PERCENTÁ) --- */
+    /* --- LOGIKA PRE GRAFY A NÁHĽADY (VÝBER OBDOBIA, KONKRÉTNYCH MESIACOV & PODKATEGÓRIE) --- */
     function setChartPeriod(period) {
         selectedChartPeriod = period;
+        selectedChartMonths = []; // Reset ručne zvolených mesiacov pri zmene hlavného obdobia
+        renderChartMonthChips();
+
         document.querySelectorAll('.period-chip').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.getElementById(`p-chip-${period}`);
         if(activeBtn) activeBtn.classList.add('active');
@@ -868,6 +952,11 @@
             const itemYear = parseInt(parts[0]);
             const itemMonth = parseInt(parts[1]) - 1;
             const itemDate = new Date(itemYear, itemMonth, parseInt(parts[2]));
+
+            // Ak má používateľ zvoľené konkrétne mesiace pre graf, použijeme tie
+            if (selectedChartMonths.length > 0) {
+                return selectedChartMonths.includes(itemMonth);
+            }
 
             if (selectedChartPeriod === 'current_month') {
                 return itemYear === curYear && itemMonth === curMonth;
@@ -892,6 +981,7 @@
         if (document.getElementById('screen-analytics').classList.contains('hidden')) return;
 
         const chartType = document.getElementById('chart-type').value;
+        const levelMode = document.getElementById('chart-level-mode').value; // 'category' | 'sub'
         const dataMode = document.getElementById('chart-data-mode').value;
         const userFilter = document.getElementById('chart-user-filter').value;
 
@@ -908,38 +998,45 @@
         let datasetData = [];
         let backgroundColors = [
             '#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', 
-            '#06b6d4', '#f97316', '#64748b', '#84cc16', '#a855f7'
+            '#06b6d4', '#f97316', '#64748b', '#84cc16', '#a855f7',
+            '#14b8a6', '#6366f1', '#d97706', '#f43f5e', '#a855f7'
         ];
 
         let totalExp = 0, totalInc = 0;
-        const catMap = {};
+        const aggregatedMap = {};
 
         filtered.forEach(item => {
             const amt = parseFloat(item.amount);
             if (item.type === 'expense') totalExp += amt;
             if (item.type === 'income') totalInc += amt;
 
+            // Kľúč je kategória alebo podkategória
+            let key = item.category;
+            if (levelMode === 'sub') {
+                key = item.sub ? `${item.category} / ${item.sub}` : `${item.category} (Bez podkat.)`;
+            }
+
             if (dataMode === 'expense' && item.type === 'expense') {
-                catMap[item.category] = (catMap[item.category] || 0) + amt;
+                aggregatedMap[key] = (aggregatedMap[key] || 0) + amt;
             } else if (dataMode === 'income' && item.type === 'income') {
-                catMap[item.category] = (catMap[item.category] || 0) + amt;
+                aggregatedMap[key] = (aggregatedMap[key] || 0) + amt;
             } else if (dataMode === 'balance') {
                 const val = item.type === 'income' ? amt : -amt;
-                catMap[item.category] = (catMap[item.category] || 0) + val;
+                aggregatedMap[key] = (aggregatedMap[key] || 0) + val;
             }
         });
 
-        const totalSelectedModeSum = Object.values(catMap).reduce((a, b) => a + Math.abs(b), 0);
+        const totalSelectedModeSum = Object.values(aggregatedMap).reduce((a, b) => a + Math.abs(b), 0);
 
         if (chartType === 'doughnut') {
-            const sortedCategories = Object.keys(catMap).sort((a,b) => Math.abs(catMap[b]) - Math.abs(catMap[a]));
+            const sortedKeys = Object.keys(aggregatedMap).sort((a,b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]));
             
-            labels = sortedCategories.map(cat => {
-                const val = Math.abs(catMap[cat]);
+            labels = sortedKeys.map(k => {
+                const val = Math.abs(aggregatedMap[k]);
                 const pct = totalSelectedModeSum > 0 ? ((val / totalSelectedModeSum) * 100).toFixed(1) : '0.0';
-                return `${cat} (${pct}%)`;
+                return `${k} (${pct}%)`;
             });
-            datasetData = sortedCategories.map(cat => Math.abs(catMap[cat]));
+            datasetData = sortedKeys.map(k => Math.abs(aggregatedMap[k]));
         } else {
             // Bar chart po mesiacoch
             const monthNames = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
@@ -1007,22 +1104,22 @@
         const statsContainer = document.getElementById('chart-stats-summary');
         
         let breakdownHtml = '';
-        if (chartType === 'doughnut' && Object.keys(catMap).length > 0) {
-            const sortedCats = Object.keys(catMap).sort((a,b) => Math.abs(catMap[b]) - Math.abs(catMap[a]));
+        if (chartType === 'doughnut' && Object.keys(aggregatedMap).length > 0) {
+            const sortedKeys = Object.keys(aggregatedMap).sort((a,b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]));
             breakdownHtml = `
                 <div class="bg-white dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1.5">
-                    <div class="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-2">Podiel podľa Kategórií</div>
-                    ${sortedCats.map((cat, idx) => {
-                        const val = Math.abs(catMap[cat]);
+                    <div class="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-2">Podiel podľa ${levelMode === 'sub' ? 'Podkategórií' : 'Kategórií'}</div>
+                    ${sortedKeys.map((k, idx) => {
+                        const val = Math.abs(aggregatedMap[k]);
                         const pct = totalSelectedModeSum > 0 ? ((val / totalSelectedModeSum) * 100).toFixed(1) : '0.0';
                         const color = backgroundColors[idx % backgroundColors.length];
                         return `
                             <div class="flex items-center justify-between text-xs">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${color}"></span>
-                                    <span class="font-bold text-slate-700 dark:text-slate-200">${cat}</span>
+                                <div class="flex items-center gap-2 truncate pr-2">
+                                    <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${color}"></span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-200 truncate">${k}</span>
                                 </div>
-                                <div class="font-extrabold flex items-center gap-2">
+                                <div class="font-extrabold flex items-center gap-2 shrink-0">
                                     <span class="text-slate-400 font-medium text-[10px]">${val.toFixed(2)} €</span>
                                     <span class="text-emerald-500 min-w-[45px] text-right">${pct}%</span>
                                 </div>
@@ -1056,6 +1153,7 @@
             id: 'p-' + Date.now(),
             name: name,
             chartType: document.getElementById('chart-type').value,
+            levelMode: document.getElementById('chart-level-mode').value,
             dataMode: document.getElementById('chart-data-mode').value,
             userFilter: document.getElementById('chart-user-filter').value,
             period: selectedChartPeriod
@@ -1071,6 +1169,7 @@
         if (!p) return;
 
         document.getElementById('chart-type').value = p.chartType;
+        if(p.levelMode) document.getElementById('chart-level-mode').value = p.levelMode;
         document.getElementById('chart-data-mode').value = p.dataMode;
         document.getElementById('chart-user-filter').value = p.userFilter;
         if (p.period) setChartPeriod(p.period);
