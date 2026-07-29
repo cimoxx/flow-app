@@ -3,1398 +3,495 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flow V20 Online</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/48/safe.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Knižnica pre grafy -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Flow V20</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght=600;700;800&family=Plus+Jakarta+Sans:wght=400;500;600;700;800&display=swap');
-        
+        /* --- DESIGN SYSTEM & CSS VARIABLES --- */
         :root {
-            --bg-main: #f8fafc;
-            --bg-card: #ffffff;
-            --text-main: #0f172a;
-            --text-dim: #64748b;
-            --border: #e2e8f0;
-            --accent: #10b981; 
-            --accent-soft: rgba(16, 185, 129, 0.08);
-            --gold: #f59e0b;
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --border-color: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-muted: #888888;
+            --accent-blue: #3498db;
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
+            --accent-warning: #f39c12;
+            --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-main: #0b0f1a;
-                --bg-card: #161d2f;
-                --text-main: #f1f5f9;
-                --text-dim: #94a3b8;
-                --border: #242f48;
-                --accent: #34d399;
-                --accent-soft: rgba(52, 211, 153, 0.1);
-            }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: var(--bg-main); 
-            color: var(--text-main); 
-            -webkit-tap-highlight-color: transparent; 
-            transition: background 0.3s;
-            letter-spacing: -0.01em;
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            padding: 16px;
+            max-width: 480px;
+            margin: 0 auto;
+            padding-bottom: 90px;
         }
 
-        h2, .font-bold, #display-balance { font-family: 'Outfit', sans-serif; }
-        .app-container { background-color: var(--bg-card); color: var(--text-main); }
-        .processed { opacity: 0.35; filter: grayscale(1); }
-        
-        .toggle-container {
+        /* --- MESAČNÝ BURN RATE CARD --- */
+        .burn-rate-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 18px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .burn-rate-header {
             display: flex;
-            background: var(--bg-main);
-            padding: 4px;
-            border-radius: 12px;
-            position: relative;
-            border: 1px solid var(--border);
-            width: 180px;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
         }
-        .toggle-option {
-            flex: 1;
-            text-align: center;
-            font-size: 9px;
-            font-weight: 800;
+
+        .burn-rate-title {
+            font-size: 0.8rem;
             text-transform: uppercase;
-            padding: 6px 0;
-            z-index: 2;
-            cursor: pointer;
-            color: var(--text-dim);
-            transition: color 0.3s;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            font-weight: 700;
         }
-        .toggle-option.active { color: #0b0f1a; }
-        .toggle-slider {
-            position: absolute;
-            top: 4px;
-            left: 4px;
-            width: calc(50% - 4px);
-            height: calc(100% - 8px);
-            background: var(--accent);
-            border-radius: 9px;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+        .status-tag {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
         }
-        .all-active .toggle-slider { transform: translateX(100%); }
 
-        .cat-tile { transition: all 0.2s; border: 1px solid var(--border); cursor: pointer; height: 58px; background: var(--bg-card); color: var(--text-dim); border-radius: 14px; }
-        .cat-tile.selected { border-color: var(--accent); background-color: var(--accent-soft); color: var(--accent); border-width: 2px; }
-        .cat-tile i { width: 14px; height: 14px; margin-bottom: 2px; }
-        .cat-tile span { font-size: 7.5px; line-height: 1; text-align: center; font-weight: 800; padding: 0 2px; text-transform: uppercase; letter-spacing: 0.02em; }
+        .status-good {
+            background-color: rgba(46, 204, 113, 0.15);
+            color: var(--accent-green);
+        }
 
-        .sub-chip { transition: all 0.2s; cursor: pointer; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); font-size: 9px; border-radius: 10px; font-weight: 700; }
-        .sub-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
-        
-        .glass-nav { background: var(--bg-card); border-top: 1px solid var(--border); }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        .summary-card { transition: all 0.3s; border: 1px solid var(--border); min-width: 90px; background: var(--bg-card); border-radius: 14px; }
-        .summary-card.active-filter { border-color: var(--gold); background-color: rgba(245, 158, 11, 0.1); transform: scale(1.03); }
-        
-        input, select, textarea { 
-            background: var(--bg-main) !important; 
-            color: var(--text-main) !important; 
-            border: 1px solid var(--border) !important; 
-            border-radius: 14px !important;
+        .status-warning {
+            background-color: rgba(231, 76, 60, 0.15);
+            color: var(--accent-red);
+        }
+
+        .burn-rate-main {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .burn-rate-value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .burn-rate-subtext {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .burn-rate-progress-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 8px;
+            background-color: var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-red));
+            border-radius: 4px;
+            transition: width 0.4s ease-out;
+        }
+
+        /* --- FORMULÁR TRANSAKCIÍ --- */
+        .transaction-form {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
             font-weight: 600;
         }
 
-        /* SWIPE GESTÁ STYLY */
-        .swipe-wrapper {
-            position: relative;
-            overflow: hidden;
-            border-radius: 14px;
-            margin-bottom: 6px;
-            touch-action: pan-y;
+        input, select {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
         }
-        .swipe-bg {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            font-weight: 800;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+
+        input:focus, select:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .btn-submit {
+            background-color: var(--accent-blue);
             color: white;
-            transition: background-color 0.2s ease, opacity 0.15s ease;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-submit:active {
+            opacity: 0.9;
+        }
+
+        /* --- UI NOTIFIKÁCIE & OFFLINE BADGE --- */
+        .offline-badge {
+            position: fixed;
+            bottom: 24px;
+            right: 16px;
+            background-color: var(--accent-warning);
+            color: #121212;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 8px 14px;
+            border-radius: 20px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+            100% { transform: scale(1); }
+        }
+
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px 18px;
+            border-radius: 25px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 2000;
             opacity: 0;
-        }
-        .swipe-content {
-            position: relative;
-            z-index: 10;
-            background: var(--bg-card);
-            transition: transform 0.2s ease-out;
-            will-change: transform;
-            user-select: none;
-        }
-        .swipe-content.swiping {
-            transition: none !important;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
         }
 
-        #display-balance { letter-spacing: -0.04em; }
-
-        .month-chip { transition: all 0.2s; flex-shrink: 0; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); border-radius: 10px; padding: 6px 12px; scroll-margin: 0 40px; }
-        .month-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
-        
-        .period-chip { transition: all 0.2s; flex-shrink: 0; font-size: 9px; font-weight: 800; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); border-radius: 8px; padding: 4px 10px; }
-        .period-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
-
-        .chart-month-chip { transition: all 0.2s; flex-shrink: 0; font-size: 8.5px; font-weight: 800; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); border-radius: 8px; padding: 3px 8px; }
-        .chart-month-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
-
-        #filter-months-container, #chart-months-container {
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
+        .toast-notification.show {
+            opacity: 1;
         }
-
-        .nav-btn { color: var(--text-dim); transition: color 0.2s; }
-        .nav-btn.active { color: var(--accent); }
     </style>
 </head>
 <body>
 
-<div id="app" class="max-w-md mx-auto min-h-screen flex flex-col pb-24 app-container shadow-2xl">
-    <!-- HLAVIČKA -->
-    <header class="p-5 border-b sticky top-0 z-20 app-container">
-        <div class="flex justify-between items-end mb-4">
-            <div class="flex items-center gap-3">
-                <img src="https://img.icons8.com/fluency/48/safe.png" class="w-9 h-9" alt="Flow Icon">
-                <div>
-                    <span id="balance-label" class="text-[9px] font-extrabold uppercase text-emerald-500 tracking-[0.15em]">SPOLU</span>
-                    <div id="display-balance" class="text-3xl font-extrabold">0,00 €</div>
-                </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <div id="sync-status" onclick="manualSync()" class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full cursor-pointer">
-                    <div id="sync-dot" class="w-2 h-2 bg-emerald-500 rounded-full transition-colors duration-300"></div>
-                    <span id="sync-text" class="text-[9px] font-black text-slate-500 uppercase tracking-tighter">OK</span>
-                </div>
-                <button type="button" onclick="openChangelogModal()" class="w-7 h-7 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-emerald-500 active:scale-95 transition-all">
-                    <i data-lucide="info" class="w-3.5 h-3.5"></i>
-                </button>
-            </div>
-        </div>
-        <div id="category-summary" class="flex flex-col gap-0"></div>
-    </header>
+    <!-- TOAST NOTIFIKÁCIA -->
+    <div id="toast" class="toast-notification"></div>
 
-    <!-- HLAVNÁ OBRAZOVKA (TRANSAKCIE) -->
-    <main id="screen-home" class="p-4 flex-1">
-        <div class="flex flex-col gap-3 mb-4">
-            <div class="flex gap-2 items-center">
-                <div id="filter-months-container" class="flex-1 flex gap-1.5 overflow-x-auto no-scrollbar py-1"></div>
-                <select id="filter-year" onchange="renderList()" class="w-20 text-[11px] p-2 outline-none h-[32px]"></select>
-            </div>
-            <div class="flex items-center justify-between px-1">
-                <div id="ui-toggle" class="toggle-container" onclick="toggleStatusFilter()">
-                    <div class="toggle-slider"></div>
-                    <div id="opt-unprocessed" class="toggle-option active">Nové</div>
-                    <div id="opt-all" class="toggle-option">Všetky</div>
-                </div>
-                <button id="clear-cat-filter" onclick="resetCategoryFilter()" class="hidden text-[10px] font-extrabold text-amber-500 uppercase tracking-wider">Zrušiť filter X</button>
-            </div>
-        </div>
-        <div id="transaction-list" class="space-y-4"></div>
-    </main>
+    <!-- OFFLINE UI BADGE -->
+    <div id="offline-badge" class="offline-badge">⚡ 0 neodoslané</div>
 
-    <!-- OBRAZOVKA GRAFOV -->
-    <main id="screen-analytics" class="p-4 flex-1 hidden space-y-4">
-        <div class="flex justify-between items-center mb-1">
-            <h2 class="text-xl font-extrabold">Grafická analýza</h2>
-            <button onclick="saveCurrentPreset()" class="text-[10px] font-extrabold bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-xl border border-emerald-500/20 active:scale-95 transition-all flex items-center gap-1">
-                <i data-lucide="bookmark" class="w-3 h-3"></i> Uložiť pohľad
-            </button>
-        </div>
-
-        <!-- Uložené náhľady (Presets) -->
-        <div id="presets-container" class="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5"></div>
-
-        <!-- Výber časového obdobia pre graf -->
-        <div class="space-y-1.5">
-            <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider px-1">Obdobie Grafu</label>
-            <div class="flex gap-1 overflow-x-auto no-scrollbar py-0.5">
-                <button type="button" onclick="setChartPeriod('current_month')" id="p-chip-current_month" class="period-chip active">Tento mesiac</button>
-                <button type="button" onclick="setChartPeriod('3m')" id="p-chip-3m" class="period-chip">3 Mesiace</button>
-                <button type="button" onclick="setChartPeriod('6m')" id="p-chip-6m" class="period-chip">6 Mesiacov</button>
-                <button type="button" onclick="setChartPeriod('year')" id="p-chip-year" class="period-chip">Tento rok</button>
-                <button type="button" onclick="setChartPeriod('all')" id="p-chip-all" class="period-chip">Všetko</button>
-            </div>
-            <!-- Filtrovanie konkrétnych mesiacov pre graf -->
-            <div id="chart-months-container" class="flex gap-1 overflow-x-auto no-scrollbar py-1 border-t border-slate-100 dark:border-slate-800/80 pt-1.5"></div>
-        </div>
-
-        <!-- Ovládacie prvky grafu -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-100 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 text-[10px]">
-            <div>
-                <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">Typ Grafu</label>
-                <select id="chart-type" onchange="updateAnalytics()" class="w-full p-2 outline-none text-xs">
-                    <option value="doughnut">Koláčový</option>
-                    <option value="bar">Stĺpcový</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">Úroveň Dát</label>
-                <select id="chart-level-mode" onchange="updateAnalytics()" class="w-full p-2 outline-none text-xs">
-                    <option value="category">Kategórie</option>
-                    <option value="sub">Podkategórie</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">Dáta</label>
-                <select id="chart-data-mode" onchange="updateAnalytics()" class="w-full p-2 outline-none text-xs">
-                    <option value="expense">Výdavky</option>
-                    <option value="income">Príjmy</option>
-                    <option value="balance">Bilancia</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">Osoba</label>
-                <select id="chart-user-filter" onchange="updateAnalytics()" class="w-full p-2 outline-none text-xs">
-                    <option value="all">Všetci</option>
-                    <option value="Lukáš">Lukáš</option>
-                    <option value="Zdenka">Zdenka</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Plátno pre Chart.js -->
-        <div class="bg-white dark:bg-slate-800/80 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm relative min-h-[300px] flex items-center justify-center">
-            <canvas id="analyticsChart" class="max-h-[320px]"></canvas>
-        </div>
-
-        <!-- Sumárne štatistiky a percentuálny rozpad pod grafom -->
-        <div id="chart-stats-summary" class="space-y-3 pt-1"></div>
-    </main>
-
-    <!-- SPODNÁ NAVIGÁCIA -->
-    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-nav flex justify-around items-center h-16 z-30">
-        <button id="nav-home" onclick="showScreen('home')" class="nav-btn active p-4"><i data-lucide="layout-grid"></i></button>
-        <button id="nav-analytics" onclick="showScreen('analytics')" class="nav-btn p-4"><i data-lucide="pie-chart"></i></button>
-        <button onclick="openModal()" class="bg-emerald-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg -mt-8 border-4 border-white dark:border-slate-900 active:scale-95 transition-all"><i data-lucide="plus" class="w-7 h-7"></i></button>
-        <button id="nav-settings" onclick="showScreen('settings')" class="nav-btn p-4"><i data-lucide="settings"></i></button>
-    </nav>
-</div>
-
-<!-- MODAL PRE PRIDANIE / EDITÁCIU TRANSAKCIE -->
-<div id="modal-overlay" class="fixed inset-0 bg-slate-900/90 z-[40] hidden backdrop-blur-sm flex items-end">
-    <div class="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-[2.5rem] p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-6 sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10">
-            <button type="button" onclick="closeModal()" class="text-slate-400 font-extrabold text-[10px] uppercase tracking-widest">Zavrieť</button>
-            <button type="button" onclick="document.getElementById('save-trigger').click()" class="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-extrabold text-[10px] uppercase shadow-md">Uložiť</button>
-        </div>
-        <form id="entry-form" onsubmit="handleSave(event)" class="space-y-5">
-            <input type="submit" id="save-trigger" class="hidden">
-            <input type="hidden" id="entry-id">
-            <div class="flex gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                <button type="button" onclick="setUser('Lukáš')" id="u-Lukáš" class="flex-1 py-1.5 rounded-lg text-[9px] font-black transition-all">LUKÁŠ</button>
-                <button type="button" onclick="setUser('Zdenka')" id="u-Zdenka" class="flex-1 py-1.5 rounded-lg text-[9px] font-black transition-all">ZDENKA</button>
-            </div>
-            <input type="number" id="f-amount" inputmode="decimal" step="0.01" placeholder="0.00" class="w-full text-center text-5xl font-extrabold py-2 outline-none border-none bg-transparent !p-0" required>
-            <div class="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                <button type="button" id="t-ex" onclick="setType('expense')" class="flex-1 py-1.5 rounded-lg text-[9px] font-black">VÝDAVOK</button>
-                <button type="button" id="t-in" onclick="setType('income')" class="flex-1 py-1.5 rounded-lg text-[9px] font-black">PRÍJEM</button>
-            </div>
-            <div>
-                <label class="text-[9px] font-black text-slate-400 uppercase block mb-2 px-1 tracking-widest">Kategória</label>
-                <div id="cat-grid" class="grid grid-cols-4 gap-1.5"></div>
-            </div>
-            <div id="sub-section" class="hidden">
-                <label class="text-[9px] font-black text-slate-400 uppercase block mb-2 px-1 tracking-widest">Podkategória</label>
-                <div id="sub-grid" class="flex flex-wrap gap-1.5"></div>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-                <input type="text" id="f-note" placeholder="Poznámka..." class="p-3.5 text-xs outline-none">
-                <input type="date" id="f-date" class="p-3.5 text-xs outline-none">
-            </div>
-            <button type="button" id="del-btn" onclick="handleDelete()" class="w-full text-red-400 text-[10px] font-black uppercase pt-2 hidden">Zmazať transakciu</button>
-        </form>
-    </div>
-</div>
-
-<!-- CHANGELOG MODAL -->
-<div id="changelog-modal" class="fixed inset-0 bg-slate-900/90 z-[50] hidden backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4 max-h-[85vh] overflow-y-auto">
-        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
-            <div>
-                <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.9.0</h3>
-            </div>
-            <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
+    <!-- MESAČNÝ BURN RATE CARD -->
+    <div class="burn-rate-card">
+        <div class="burn-rate-header">
+            <span class="burn-rate-title">Mesačný Burn Rate</span>
+            <span id="burn-rate-status-tag" class="status-tag status-good">0.0% vs min. mesiac</span>
         </div>
         
-        <div class="space-y-4">
-            <div>
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.9.0</span>
-                    <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
-                </div>
-                <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridaná podpora pre filtrovanie konkrétnych mesiacov pri grafe.</li>
-                    <li>Pridané zobrazenie grafu pre podkategórie.</li>
-                    <li>Pridaná možnosť úpravy/editácie názvu kategórií aj podkategórií v Admin zóne.</li>
-                </ul>
+        <div class="burn-rate-main">
+            <div class="burn-rate-value" id="burn-rate-daily">0,00 €</div>
+            <div class="burn-rate-subtext">priemer / deň</div>
+        </div>
+
+        <div class="burn-rate-progress-wrapper">
+            <div class="progress-labels">
+                <span id="burn-rate-current-total">Minuté: 0,00 €</span>
+                <span id="burn-rate-pace-projected">Odhad: 0,00 €</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div id="burn-rate-progress-fill" class="progress-bar-fill" style="width: 0%;"></div>
             </div>
         </div>
-
-        <button type="button" onclick="closeChangelogModal()" class="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-extrabold text-[10px] uppercase rounded-xl mt-2">Zavrieť</button>
     </div>
-</div>
 
-<!-- OBRAZOVKA NASTAVENÍ (ADMIN ZÓNA) -->
-<div id="settings-screen" class="fixed inset-0 bg-white dark:bg-slate-900 z-50 hidden p-6 max-w-md mx-auto overflow-y-auto pb-24">
-    <div id="settings-home">
-        <div class="flex items-center gap-4 mb-6"><button onclick="showScreen('home')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 class="text-xl font-extrabold">Nastavenia</h2></div>
-        <div class="flex gap-2 mb-6">
-            <button onclick="manualSync()" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-extrabold text-[9px] uppercase shadow-sm">Sync Dáta</button>
-            <button onclick="syncCategories('pull')" class="flex-1 py-3 bg-slate-800 text-white rounded-xl font-extrabold text-[9px] uppercase shadow-sm">Sync Kategórie</button>
+    <!-- TRANSAKČNÝ FORMULÁR -->
+    <form id="transaction-form" class="transaction-form">
+        <div class="form-group">
+            <label for="amount">Suma (€)</label>
+            <input type="number" id="amount" step="0.01" placeholder="0.00" required>
         </div>
-        <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl mb-4 border border-slate-200 dark:border-slate-700">
-            <div class="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest text-center">Nová kategória</div>
-            <div class="flex gap-2">
-                <input type="text" id="new-cat-name" placeholder="Názov..." class="flex-1 p-3.5 rounded-xl text-sm outline-none">
-                <button onclick="addCategory()" class="bg-emerald-500 text-white px-4 rounded-xl font-extrabold text-[9px] uppercase">Pridať</button>
-            </div>
+
+        <div class="form-group">
+            <label for="category">Kategória</label>
+            <select id="category" required>
+                <option value="Potraviny">Potraviny</option>
+                <option value="Reštaurácie">Reštaurácie</option>
+                <option value="Doprava">Doprava</option>
+                <option value="Bývanie">Bývanie</option>
+                <option value="Zábava">Zábava</option>
+                <option value="Iné">Iné</option>
+            </select>
         </div>
-        <div id="manage-cats-list" class="space-y-2 mb-8"></div>
-    </div>
-    <div id="settings-cat-detail" class="hidden">
-        <div class="flex items-center gap-4 mb-6">
-            <button onclick="closeCatDetail()" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button>
-            <h2 id="detail-cat-title" class="text-xl font-extrabold">Podkategórie</h2>
+
+        <div class="form-group">
+            <label for="user">Užívateľ</label>
+            <select id="user" required>
+                <option value="Lukáš">Lukáš</option>
+                <option value="Zdenka">Zdenka</option>
+            </select>
         </div>
-        <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl mb-4 border border-slate-200 dark:border-slate-700">
-            <div class="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest text-center">Nová podkategória</div>
-            <div class="flex gap-2">
-                <input type="text" id="new-sub-name" placeholder="Názov..." class="flex-1 p-3.5 rounded-xl text-sm outline-none">
-                <button onclick="addSubCategory()" class="bg-emerald-500 text-white px-4 rounded-xl font-extrabold text-[9px] uppercase">Pridať</button>
-            </div>
+
+        <div class="form-group">
+            <label for="note">Poznámka</label>
+            <input type="text" id="note" placeholder="Napr. Lidl nákup">
         </div>
-        <div id="manage-subs-list" class="space-y-2"></div>
-        <button onclick="deleteActiveCat()" class="w-full mt-10 text-red-400 text-[10px] font-black uppercase tracking-widest py-4 border border-red-100 dark:border-red-900/30 rounded-2xl">Zmazať celú kategóriu</button>
-    </div>
-</div>
 
-<script>
-    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
+        <button type="submit" class="btn-submit">Uložiť transakciu</button>
+    </form>
 
-    const GOOGLE_URL = 'https://script.google.com/macros/s/AKfycbybTaD_vfOjOooWjKEHY7_wJxrvlSaYbqRqQM8OO_Q6VyV9V-BLkOg8f4Esu74X5sSFfQ/exec';
-    
-    let db = JSON.parse(localStorage.getItem('f_db_v20')) || [];
-    let syncQueue = JSON.parse(localStorage.getItem('f_sync_q_v20')) || [];
-    let categories = JSON.parse(localStorage.getItem('f_cats_v20')) || [];
-    let chartPresets = JSON.parse(localStorage.getItem('f_chart_presets_v20')) || [];
-    let curUser = localStorage.getItem('f_last_user') || 'Lukáš';
-    
-    let curType = 'expense', selectedCat = '', selectedSub = '', activeCategoryFilter = null, isSyncing = false;
-    let currentStatusFilter = 'unprocessed', activeSettingsCat = null;
-    window.activeSubFilter = null;
-    let analyticsChartInstance = null;
-    
-    let selectedChartPeriod = 'current_month';
-    let selectedChartMonths = []; // Filtrovanie konkrétnych mesiacov pri grafe
+    <script>
+        // --- CONFIGURATION ---
+        // Sem vlož svoju URL z Google Apps Script Web App
+        const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
 
-    let selectedMonths = [new Date().getMonth()];
+        // Lokálna pamäť pre transakcie (pre výpočet Burn Rate)
+        let localTransactions = JSON.parse(localStorage.getItem('flow_transactions') || '[]');
 
-    function getCleanDateStr(dStr) {
-        if (!dStr) return getTodayStr();
-        let s = String(dStr).trim();
-        
-        if (s.includes('T') || s.includes('Z')) {
-            const parsed = new Date(s);
-            if (!isNaN(parsed.getTime())) {
-                const year = parsed.getFullYear();
-                const month = String(parsed.getMonth() + 1).padStart(2, '0');
-                const day = String(parsed.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            updateOfflineBadge();
+            calculateAndRenderBurnRate(localTransactions);
+
+            if (navigator.onLine) {
+                syncOfflineQueue();
+            }
+        });
+
+        // Sledovanie stavu siete
+        window.addEventListener('online', () => {
+            showToast('Pripojené k internetu. Synchronizujem...', 'info');
+            syncOfflineQueue();
+        });
+
+        window.addEventListener('offline', () => {
+            showToast('Aplikácia je offline. Dáta sa uložia lokálne.', 'warning');
+            updateOfflineBadge();
+        });
+
+        // --- FORM SUBMIT HANDLING ---
+        document.getElementById('transaction-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const transactionData = {
+                id: Date.now(),
+                date: new Date().toISOString(),
+                amount: parseFloat(document.getElementById('amount').value),
+                category: document.getElementById('category').value,
+                user: document.getElementById('user').value,
+                note: document.getElementById('note').value,
+                type: 'expense'
+            };
+
+            // 1. Pridanie do lokálnej pamäte a prepočet Burn Rate
+            localTransactions.push(transactionData);
+            localStorage.setItem('flow_transactions', JSON.stringify(localTransactions));
+            calculateAndRenderBurnRate(localTransactions);
+
+            // 2. Uloženie cez Offline Queue / API
+            await saveTransaction(transactionData);
+
+            // 3. Reset formulára
+            document.getElementById('transaction-form').reset();
+        });
+
+        // --- 1. OFFLINE QUEUE ENGINE ---
+        async function saveTransaction(data) {
+            if (!navigator.onLine) {
+                queueOfflineTransaction(data);
+                showToast('Uložené offline (čaká na sieť).');
+                return;
+            }
+
+            try {
+                await sendToGoogleSheets(data);
+                showToast('Transakcia uložená!');
+            } catch (error) {
+                console.error('Chyba pri odosielaní:', error);
+                queueOfflineTransaction(data);
+                showToast('Chyba siete. Uložené do queue.');
             }
         }
 
-        if (s.includes('T')) s = s.split('T')[0];
-        if (s.includes(' ')) s = s.split(' ')[0];
-        
-        if (s.includes('.')) {
-            const p = s.split('.');
-            if (p.length === 3) {
-                return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
-            }
+        function queueOfflineTransaction(data) {
+            const queue = JSON.parse(localStorage.getItem('flow_offline_queue') || '[]');
+            queue.push({ ...data, queuedAt: new Date().toISOString() });
+            localStorage.setItem('flow_offline_queue', JSON.stringify(queue));
+            updateOfflineBadge();
         }
-        return s;
-    }
 
-    function getTodayStr() {
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
+        async function syncOfflineQueue() {
+            const queue = JSON.parse(localStorage.getItem('flow_offline_queue') || '[]');
+            if (queue.length === 0) return;
 
-    function getYesterdayStr() {
-        const d = new Date();
-        d.setDate(d.getDate() - 1);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
+            const remainingQueue = [];
 
-    function buildDateWithCurrentTime(dateInputVal) {
-        const cleanD = getCleanDateStr(dateInputVal);
-        const now = new Date();
-        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-        return `${cleanD} ${timeStr}`;
-    }
-
-    function openChangelogModal() { document.getElementById('changelog-modal').classList.remove('hidden'); }
-    function closeChangelogModal() { document.getElementById('changelog-modal').classList.add('hidden'); }
-
-    function updateSyncUI(status) {
-        const dot = document.getElementById('sync-dot');
-        const text = document.getElementById('sync-text');
-        if (status === 'syncing') { dot.className = "w-2 h-2 bg-blue-400 animate-pulse rounded-full"; text.innerText = "..."; }
-        else { if (syncQueue.length > 0) { dot.className = "w-2 h-2 bg-amber-500 rounded-full"; text.innerText = syncQueue.length; } else { dot.className = "w-2 h-2 bg-emerald-500 rounded-full"; text.innerText = "OK"; } }
-    }
-
-    async function processSyncQueue() { 
-        if (syncQueue.length === 0 || isSyncing) { updateSyncUI('ok'); return; } 
-        isSyncing = true; updateSyncUI('syncing'); 
-        while (syncQueue.length > 0) { 
-            try { 
-                await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(syncQueue[0]) }); 
-                syncQueue.shift(); 
-                saveData(false); 
-                updateSyncUI('syncing'); 
-            } catch (e) { break; } 
-        } 
-        isSyncing = false; updateSyncUI('ok'); 
-    }
-
-    async function syncTransactions(action = 'pull') {
-        if (action === 'pull') {
-            updateSyncUI('syncing');
-            try { 
-                const res = await fetch(GOOGLE_URL + "?get=transactions"); 
-                const cloudData = await res.json(); 
-                if (Array.isArray(cloudData)) { 
-                    const queuedIds = syncQueue.map(q => String(q.id));
-                    db = cloudData.map(c => {
-                        const local = db.find(l => String(l.id) === String(c.id));
-                        if (queuedIds.includes(String(c.id)) && local) return local;
-                        return { ...c, date: getCleanDateStr(c.date) };
-                    });
-                    localStorage.setItem('f_db_v20', JSON.stringify(db)); 
-                    renderList(); 
-                    updateAnalytics();
-                } 
-            } catch (e) { console.error("Sync error:", e); }
-            updateSyncUI('ok');
-        }
-    }
-
-    function openModal(id = null) {
-        const overlay = document.getElementById('modal-overlay');
-        const amountInput = document.getElementById('f-amount');
-        const entryIdInput = document.getElementById('entry-id');
-        overlay.classList.remove('hidden');
-
-        if(id) {
-            const i = db.find(x => String(x.id) === String(id));
-            if(!i) return;
-            entryIdInput.value = i.id; 
-            amountInput.value = i.amount;
-            document.getElementById('f-note').value = i.note || ''; 
-            
-            const cleanD = getCleanDateStr(i.date);
-            document.getElementById('f-date').value = cleanD || getTodayStr();
-
-            setUser(i.user || 'Lukáš'); 
-            setType(i.type || 'expense'); 
-            
-            renderCatGrid();
-            selectCat(i.category);
-            if(i.sub) { selectSub(i.sub); }
-
-            document.getElementById('del-btn').classList.remove('hidden');
-        } else {
-            document.getElementById('entry-form').reset();
-            entryIdInput.value = "";
-            document.getElementById('f-date').value = getTodayStr();
-            setUser(localStorage.getItem('f_last_user') || 'Lukáš'); 
-            setType('expense');
-            
-            renderCatGrid();
-            
-            const lastCat = localStorage.getItem('f_last_cat');
-            const lastSub = localStorage.getItem('f_last_sub');
-            let catToSelect = lastCat || (categories[0]?.id || '');
-            
-            selectCat(catToSelect);
-            
-            if(lastSub) {
-                const cat = categories.find(c => c.id === catToSelect);
-                if(cat && cat.subs && cat.subs.includes(lastSub)) {
-                    selectSub(lastSub);
+            for (const item of queue) {
+                try {
+                    await sendToGoogleSheets(item);
+                } catch (err) {
+                    console.error('Sync zlyhal:', item, err);
+                    remainingQueue.push(item);
                 }
             }
-            document.getElementById('del-btn').classList.add('hidden');
+
+            localStorage.setItem('flow_offline_queue', JSON.stringify(remainingQueue));
+            updateOfflineBadge();
+
+            if (remainingQueue.length === 0) {
+                showToast('Offline dáta boli synchronizované!');
+            }
         }
-        setTimeout(() => { amountInput.focus(); amountInput.select(); }, 300);
-    }
 
-    function handleSave(e) {
-        e.preventDefault();
-        let existingId = document.getElementById('entry-id').value;
-        let id = existingId || 'ID-' + Date.now();
-        
-        const cleanDate = getCleanDateStr(document.getElementById('f-date').value);
-        const fullDateWithTime = buildDateWithCurrentTime(document.getElementById('f-date').value);
-        
-        let currentProcessed = false;
-        const localRecord = db.find(x => String(x.id) === String(id));
-        if (localRecord) currentProcessed = localRecord.processed;
+        async function sendToGoogleSheets(data) {
+            // Ak nemáš nastavenú URL, simulujeme úspešné odoslanie
+            if (GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+                return new Promise(resolve => setTimeout(resolve, 500));
+            }
 
-        const entry = { 
-            id: id, 
-            date: cleanDate,
-            full_date: fullDateWithTime,
-            category: selectedCat, 
-            sub: selectedSub, 
-            amount: parseFloat(document.getElementById('f-amount').value), 
-            type: curType, 
-            note: document.getElementById('f-note').value, 
-            processed: currentProcessed, 
-            user: curUser, 
-            action: 'save' 
-        };
-
-        if (selectedCat) localStorage.setItem('f_last_cat', selectedCat);
-        if (selectedSub) localStorage.setItem('f_last_sub', selectedSub);
-
-        const idx = db.findIndex(x => String(x.id) === String(id));
-        if (idx > -1) { db[idx] = entry; } else { db.push(entry); }
-        
-        syncQueue.push(entry); 
-        saveData(false); 
-        closeModal(); 
-        renderList(); 
-        updateAnalytics();
-        processSyncQueue();
-    }
-
-    function handleDelete(idToDelete = null) { 
-        const id = idToDelete || document.getElementById('entry-id').value; 
-        if(id && confirm('Zmazať transakciu?')) { 
-            syncQueue.push({ id: id, action: 'delete' }); 
-            db = db.filter(x => String(x.id) !== String(id)); 
-            saveData(false); 
-            closeModal(); 
-            renderList(); 
-            updateAnalytics();
-            processSyncQueue(); 
-        } 
-    }
-
-    /* --- ADMIN ZÓNA: SPRÁVA A EDITÁCIA KATEGÓRIÍ A PODKATEGÓRIÍ --- */
-    function renderManageCats() {
-        document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `
-            <div class="flex items-center gap-2">
-                <div onclick="openCatDetail(${i})" class="flex-1 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between shadow-sm cursor-pointer active:scale-[0.98] transition-all">
-                    <div class="font-extrabold text-sm uppercase flex items-center gap-2">
-                        <span>${c.id}</span>
-                    </div>
-                    <div class="text-[9px] text-slate-300 uppercase font-black tracking-tighter">${c.subs.length} subs</div>
-                </div>
-                <button type="button" onclick="editCategoryName(${i})" class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-500"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-                <div class="flex flex-col gap-1">
-                    <button type="button" onclick="moveCat(${i}, -1)" class="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-up" class="w-3 h-3"></i></button>
-                    <button type="button" onclick="moveCat(${i}, 1)" class="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-down" class="w-3 h-3"></i></button>
-                </div>
-            </div>`).join('');
-        lucide.createIcons();
-    }
-
-    function editCategoryName(index) {
-        const oldName = categories[index].id;
-        const newName = prompt("Upravte názov kategórie:", oldName);
-        if (newName && newName.trim() !== "" && newName !== oldName) {
-            const trimmed = newName.trim();
-            // Aktualizujeme existujúce transakcie
-            db.forEach(item => {
-                if (item.category === oldName) item.category = trimmed;
+            return fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
             });
-            categories[index].id = trimmed;
-            saveData(true);
-            renderManageCats();
-            renderCatGrid();
-            renderList();
-            updateAnalytics();
-        }
-    }
-
-    function openCatDetail(index) { activeSettingsCat = index; document.getElementById('settings-home').classList.add('hidden'); document.getElementById('settings-cat-detail').classList.remove('hidden'); document.getElementById('detail-cat-title').innerText = categories[index].id; renderManageSubs(); }
-    
-    function renderManageSubs() {
-        const cat = categories[activeSettingsCat];
-        document.getElementById('manage-subs-list').innerHTML = cat.subs.map((s, i) => `
-            <div class="flex items-center gap-2">
-                <div class="flex-1 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between border border-transparent dark:border-slate-700">
-                    <div class="font-bold text-xs uppercase">${s}</div>
-                    <div class="flex items-center gap-1">
-                        <button type="button" onclick="editSubCategoryName(${i})" class="p-1.5 text-slate-400 hover:text-emerald-500"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
-                        <button type="button" onclick="deleteSub(${i})" class="p-1.5 text-red-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                    </div>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <button type="button" onclick="moveSub(${i}, -1)" class="p-1.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-up" class="w-2.5 h-2.5"></i></button>
-                    <button type="button" onclick="moveSub(${i}, 1)" class="p-1.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700"><i data-lucide="chevron-down" class="w-2.5 h-2.5"></i></button>
-                </div>
-            </div>`).join('');
-        lucide.createIcons();
-    }
-
-    function editSubCategoryName(subIndex) {
-        const cat = categories[activeSettingsCat];
-        const oldName = cat.subs[subIndex];
-        const newName = prompt("Upravte názov podkategórie:", oldName);
-        if (newName && newName.trim() !== "" && newName !== oldName) {
-            const trimmed = newName.trim();
-            // Aktualizujeme existujúce transakcie
-            db.forEach(item => {
-                if (item.category === cat.id && item.sub === oldName) item.sub = trimmed;
-            });
-            cat.subs[subIndex] = trimmed;
-            saveData(true);
-            renderManageSubs();
-            renderList();
-            updateAnalytics();
-        }
-    }
-
-    function moveCat(i, dir) { if((dir === -1 && i > 0) || (dir === 1 && i < categories.length - 1)) { const temp = categories[i]; categories[i] = categories[i + dir]; categories[i + dir] = temp; saveData(true); renderManageCats(); renderCatGrid(); } }
-    function moveSub(i, dir) { const subs = categories[activeSettingsCat].subs; if((dir === -1 && i > 0) || (dir === 1 && i < subs.length - 1)) { const temp = subs[i]; subs[i] = subs[i + dir]; subs[i + dir] = temp; saveData(true); renderManageSubs(); } }
-    function addCategory() { let n = document.getElementById('new-cat-name').value.trim(); if(n) { categories.push({id: n, icon: 'layers', subs: []}); document.getElementById('new-cat-name').value = ''; saveData(true); renderManageCats(); renderCatGrid(); } }
-    function addSubCategory() { let n = document.getElementById('new-sub-name').value.trim(); if(n && activeSettingsCat !== null) { categories[activeSettingsCat].subs.push(n); document.getElementById('new-sub-name').value = ''; saveData(true); renderManageSubs(); } }
-    function deleteSub(index) { if(confirm('Zmazať podkategóriu?')) { categories[activeSettingsCat].subs.splice(index, 1); saveData(true); renderManageSubs(); } }
-    function deleteActiveCat() { if(confirm(`Zmazať kategóriu ${categories[activeSettingsCat].id}?`)) { categories.splice(activeSettingsCat, 1); saveData(true); closeCatDetail(); renderCatGrid(); } }
-
-    function selectCat(id, e = null) { 
-        if (e) e.preventDefault();
-        selectedCat = id; 
-        selectedSub = ''; 
-        
-        document.querySelectorAll('.cat-tile').forEach(el => el.classList.toggle('selected', el.dataset.id === id)); 
-        const cat = categories.find(c => c.id === id); 
-        
-        const subSection = document.getElementById('sub-section');
-        const subGrid = document.getElementById('sub-grid');
-        
-        if(cat && cat.subs && cat.subs.length > 0) { 
-            subSection.classList.remove('hidden'); 
-            subGrid.innerHTML = cat.subs.map(s => `<button type="button" onclick="selectSub('${s}', event)" data-sub="${s}" class="sub-chip px-3 py-2 rounded-xl font-extrabold uppercase shadow-sm">${s}</button>`).join(''); 
-        } else { 
-            subSection.classList.add('hidden'); 
-            subGrid.innerHTML = '';
-        } 
-    }
-
-    function selectSub(s, e = null) { 
-        if (e) e.preventDefault();
-        selectedSub = s; 
-        document.querySelectorAll('.sub-chip').forEach(el => el.classList.toggle('active', el.dataset.sub === s)); 
-    }
-
-    function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
-    function closeCatDetail() { activeSettingsCat = null; document.getElementById('settings-cat-detail').classList.add('hidden'); document.getElementById('settings-home').classList.remove('hidden'); renderManageCats(); }
-    
-    function showScreen(s) { 
-        document.getElementById('screen-home').classList.toggle('hidden', s !== 'home');
-        document.getElementById('screen-analytics').classList.toggle('hidden', s !== 'analytics');
-        document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings');
-
-        document.getElementById('nav-home').classList.toggle('active', s === 'home');
-        document.getElementById('nav-analytics').classList.toggle('active', s === 'analytics');
-        document.getElementById('nav-settings').classList.toggle('active', s === 'settings');
-
-        if(s === 'settings') { 
-            activeSettingsCat = null; 
-            closeCatDetail(); 
-            renderManageCats(); 
-        } else if (s === 'analytics') {
-            renderPresets();
-            renderChartMonthChips();
-            updateAnalytics();
-        } else {
-            renderList();
-        }
-    }
-    
-    async function syncCategories(action = 'push') {
-        updateSyncUI('syncing');
-        if (action === 'push') { try { await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'sync_categories', categories: categories }) }); } catch (e) { } }
-        else { try { const res = await fetch(GOOGLE_URL + "?get=categories"); const cloudData = await res.json(); if(Array.isArray(cloudData)) { categories = cloudData; localStorage.setItem('f_cats_v20', JSON.stringify(categories)); renderCatGrid(); if(!document.getElementById('settings-screen').classList.contains('hidden') && activeSettingsCat === null) renderManageCats(); } } catch (e) { } }
-        updateSyncUI('ok');
-    }
-
-    function toggleMonthSelect(monthIdx) {
-        if (selectedMonths.includes(monthIdx)) {
-            selectedMonths = selectedMonths.filter(m => m !== monthIdx);
-        } else {
-            selectedMonths.push(monthIdx);
-        }
-        renderMonthChips();
-        renderList();
-        updateAnalytics();
-        scrollToActiveMonth(monthIdx);
-    }
-
-    function renderMonthChips() {
-        const container = document.getElementById('filter-months-container');
-        const months = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
-        container.innerHTML = months.map((m, i) => {
-            const isActive = selectedMonths.includes(i);
-            return `<button type="button" id="m-chip-${i}" onclick="toggleMonthSelect(${i})" class="month-chip ${isActive ? 'active' : ''}">${m}</button>`;
-        }).join('');
-    }
-
-    function scrollToActiveMonth(monthIdx) {
-        const activeChip = document.getElementById(`m-chip-${monthIdx}`);
-        if (activeChip) {
-            activeChip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-        }
-    }
-
-    /* --- FILTROVANIE MESIACOV VO SEKCII GRAFOV --- */
-    function toggleChartMonthSelect(monthIdx) {
-        if (selectedChartMonths.includes(monthIdx)) {
-            selectedChartMonths = selectedChartMonths.filter(m => m !== monthIdx);
-        } else {
-            selectedChartMonths.push(monthIdx);
-        }
-        renderChartMonthChips();
-        updateAnalytics();
-    }
-
-    function renderChartMonthChips() {
-        const container = document.getElementById('chart-months-container');
-        if (!container) return;
-        const months = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
-        container.innerHTML = months.map((m, i) => {
-            const isActive = selectedChartMonths.includes(i);
-            return `<button type="button" onclick="toggleChartMonthSelect(${i})" class="chart-month-chip ${isActive ? 'active' : ''}">${m}</button>`;
-        }).join('');
-    }
-
-    function formatDayLabel(dateStr) {
-        const cleanDate = getCleanDateStr(dateStr);
-        if (!cleanDate) return 'Neznámy dátum';
-
-        const todayStr = getTodayStr();
-        const yesterdayStr = getYesterdayStr();
-
-        if (cleanDate === todayStr) return 'Dnes';
-        if (cleanDate === yesterdayStr) return 'Včera';
-
-        const parts = cleanDate.split('-');
-        if (parts.length === 3) {
-            return `${parseInt(parts[2])}. ${parseInt(parts[1])}. ${parts[0]}`;
         }
 
-        return cleanDate;
-    }
-
-    function getFilteredData() {
-        const selYear = parseInt(document.getElementById('filter-year').value);
-        return db.filter(d => { 
-            const cleanDate = getCleanDateStr(d.date);
-            const parts = cleanDate.split('-');
-            if (parts.length === 3) {
-                const itemYear = parseInt(parts[0]);
-                const itemMonth = parseInt(parts[1]) - 1; 
-                const monthMatches = selectedMonths.length === 0 || selectedMonths.includes(itemMonth);
-                return monthMatches && itemYear === selYear;
-            }
-            return false;
-        });
-    }
-
-    function renderList() {
-        const list = document.getElementById('transaction-list');
-        let currentFiltered = getFilteredData();
-        
-        if (currentStatusFilter === 'unprocessed') {
-            currentFiltered = currentFiltered.filter(d => !d.processed);
-        }
-
-        const sums = {}; 
-        currentFiltered.forEach(item => { 
-            if (item.type === 'expense') {
-                if (!sums[item.category]) sums[item.category] = 0;
-                if (!window.activeSubFilter || item.sub === window.activeSubFilter) {
-                    sums[item.category] += item.amount; 
-                }
-            }
-        });
-        renderSummary(sums, currentFiltered);
-
-        if (activeCategoryFilter) {
-            currentFiltered = currentFiltered.filter(d => d.category === activeCategoryFilter);
-            if (window.activeSubFilter) {
-                currentFiltered = currentFiltered.filter(d => d.sub === window.activeSubFilter);
-            }
-        }
-
-        updateTotals(currentFiltered);
-
-        document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
-        
-        const sortedItems = [...currentFiltered].sort((a, b) => {
-            const dateA = getCleanDateStr(a.date);
-            const dateB = getCleanDateStr(b.date);
-            if (dateA !== dateB) return dateB.localeCompare(dateA);
-            return String(b.id).localeCompare(String(a.id));
-        });
-
-        const grouped = {};
-        sortedItems.forEach(item => {
-            const dayKey = getCleanDateStr(item.date) || 'Neznámy dátum';
-            if (!grouped[dayKey]) grouped[dayKey] = [];
-            grouped[dayKey].push(item);
-        });
-
-        if (Object.keys(grouped).length === 0) {
-            list.innerHTML = `<div class="text-center py-8 text-slate-400 font-extrabold text-xs uppercase">Žiadne transakcie</div>`;
-            return;
-        }
-
-        let html = '';
-        Object.keys(grouped).forEach(dayKey => {
-            const dayItems = grouped[dayKey];
-            const daySum = dayItems.reduce((acc, curr) => curr.type === 'income' ? acc + parseFloat(curr.amount) : acc - parseFloat(curr.amount), 0);
+        function updateOfflineBadge() {
+            const queue = JSON.parse(localStorage.getItem('flow_offline_queue') || '[]');
+            const badge = document.getElementById('offline-badge');
             
-            html += `
-            <div class="day-group mb-3">
-                <div class="flex justify-between items-center px-2 py-1 mb-1 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
-                    <span>${formatDayLabel(dayKey)}</span>
-                    <span class="${daySum >= 0 ? 'text-emerald-500' : 'text-slate-400'}">${daySum >= 0 ? '+' : ''}${daySum.toFixed(2)} €</span>
-                </div>
-                <div class="space-y-1">
-                    ${dayItems.map(item => `
-                        <div class="swipe-wrapper" id="wrapper-${item.id}">
-                            <div class="swipe-bg" id="bg-${item.id}">
-                                <span class="left-action flex items-center gap-1.5"><i data-lucide="check" class="w-4 h-4"></i> <span id="bg-left-text-${item.id}">Zapísaná</span></span>
-                                <span class="right-action flex items-center gap-1.5"><span>Vymazať</span> <i data-lucide="trash-2" class="w-4 h-4"></i></span>
-                            </div>
-                            <div class="swipe-content p-4 flex items-center justify-between ${item.processed ? 'processed' : ''}" 
-                                 id="item-${item.id}"
-                                 ontouchstart="handleSwipeStart(event, '${item.id}')"
-                                 ontouchmove="handleSwipeMove(event, '${item.id}')"
-                                 ontouchend="handleSwipeEnd(event, '${item.id}', ${item.processed})">
-                                
-                                <div class="flex-1">
-                                    <div class="flex justify-between items-center pr-3">
-                                        <span class="font-bold text-xs tracking-tight">${item.category}${item.sub ? ' <span class="text-slate-400 font-medium">/</span> '+item.sub : ''}</span>
-                                        <span class="font-extrabold text-xs ${item.type === 'income' ? 'text-emerald-500' : ''}">${parseFloat(item.amount).toFixed(2)}€</span>
-                                    </div>
-                                    <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${item.note ? item.note : ''}</div>
-                                </div>
-
-                                <div onclick="event.stopPropagation(); toggleProcessed('${item.id}')" class="w-7 h-7 rounded-lg flex items-center justify-center border ml-3 cursor-pointer shrink-0 ${item.processed ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-300'}">
-                                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>`;
-        });
-
-        list.innerHTML = html;
-        lucide.createIcons();
-    }
-
-    /* --- LOGIKA PRE GRAFY A NÁHĽADY (VÝBER OBDOBIA, KONKRÉTNYCH MESIACOV & PODKATEGÓRIE) --- */
-    function setChartPeriod(period) {
-        selectedChartPeriod = period;
-        selectedChartMonths = []; // Reset ručne zvolených mesiacov pri zmene hlavného obdobia
-        renderChartMonthChips();
-
-        document.querySelectorAll('.period-chip').forEach(btn => btn.classList.remove('active'));
-        const activeBtn = document.getElementById(`p-chip-${period}`);
-        if(activeBtn) activeBtn.classList.add('active');
-        updateAnalytics();
-    }
-
-    function getAnalyticsDataForPeriod() {
-        const now = new Date();
-        const curYear = now.getFullYear();
-        const curMonth = now.getMonth();
-
-        return db.filter(d => {
-            const cleanD = getCleanDateStr(d.date);
-            const parts = cleanD.split('-');
-            if (parts.length !== 3) return false;
-
-            const itemYear = parseInt(parts[0]);
-            const itemMonth = parseInt(parts[1]) - 1;
-            const itemDate = new Date(itemYear, itemMonth, parseInt(parts[2]));
-
-            // Ak má používateľ zvoľené konkrétne mesiace pre graf, použijeme tie
-            if (selectedChartMonths.length > 0) {
-                return selectedChartMonths.includes(itemMonth);
+            if (queue.length > 0) {
+                badge.innerHTML = `⚡ ${queue.length} neodoslané`;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
             }
-
-            if (selectedChartPeriod === 'current_month') {
-                return itemYear === curYear && itemMonth === curMonth;
-            } else if (selectedChartPeriod === '3m') {
-                const cutoff = new Date();
-                cutoff.setMonth(now.getMonth() - 3);
-                return itemDate >= cutoff;
-            } else if (selectedChartPeriod === '6m') {
-                const cutoff = new Date();
-                cutoff.setMonth(now.getMonth() - 6);
-                return itemDate >= cutoff;
-            } else if (selectedChartPeriod === 'year') {
-                return itemYear === curYear;
-            } else if (selectedChartPeriod === 'all') {
-                return true;
-            }
-            return true;
-        });
-    }
-
-    function updateAnalytics() {
-        if (document.getElementById('screen-analytics').classList.contains('hidden')) return;
-
-        const chartType = document.getElementById('chart-type').value;
-        const levelMode = document.getElementById('chart-level-mode').value; // 'category' | 'sub'
-        const dataMode = document.getElementById('chart-data-mode').value;
-        const userFilter = document.getElementById('chart-user-filter').value;
-
-        let filtered = getAnalyticsDataForPeriod();
-
-        if (userFilter !== 'all') {
-            filtered = filtered.filter(d => (d.user || 'Lukáš') === userFilter);
         }
 
-        const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const textColor = isDark ? '#94a3b8' : '#64748b';
+        // --- 2. MESAČNÝ BURN RATE ENGINE ---
+        function calculateAndRenderBurnRate(transactions) {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            const currentDay = now.getDate();
+            const totalDaysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-        let labels = [];
-        let datasetData = [];
-        let backgroundColors = [
-            '#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', 
-            '#06b6d4', '#f97316', '#64748b', '#84cc16', '#a855f7',
-            '#14b8a6', '#6366f1', '#d97706', '#f43f5e', '#a855f7'
-        ];
-
-        let totalExp = 0, totalInc = 0;
-        const aggregatedMap = {};
-
-        filtered.forEach(item => {
-            const amt = parseFloat(item.amount);
-            if (item.type === 'expense') totalExp += amt;
-            if (item.type === 'income') totalInc += amt;
-
-            // Kľúč je kategória alebo podkategória
-            let key = item.category;
-            if (levelMode === 'sub') {
-                key = item.sub ? `${item.category} / ${item.sub}` : `${item.category} (Bez podkat.)`;
-            }
-
-            if (dataMode === 'expense' && item.type === 'expense') {
-                aggregatedMap[key] = (aggregatedMap[key] || 0) + amt;
-            } else if (dataMode === 'income' && item.type === 'income') {
-                aggregatedMap[key] = (aggregatedMap[key] || 0) + amt;
-            } else if (dataMode === 'balance') {
-                const val = item.type === 'income' ? amt : -amt;
-                aggregatedMap[key] = (aggregatedMap[key] || 0) + val;
-            }
-        });
-
-        const totalSelectedModeSum = Object.values(aggregatedMap).reduce((a, b) => a + Math.abs(b), 0);
-
-        if (chartType === 'doughnut') {
-            const sortedKeys = Object.keys(aggregatedMap).sort((a,b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]));
-            
-            labels = sortedKeys.map(k => {
-                const val = Math.abs(aggregatedMap[k]);
-                const pct = totalSelectedModeSum > 0 ? ((val / totalSelectedModeSum) * 100).toFixed(1) : '0.0';
-                return `${k} (${pct}%)`;
-            });
-            datasetData = sortedKeys.map(k => Math.abs(aggregatedMap[k]));
-        } else {
-            // Bar chart po mesiacoch
-            const monthNames = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
-            const monthlySums = new Array(12).fill(0);
-
-            filtered.forEach(item => {
-                const cleanD = getCleanDateStr(item.date);
-                const parts = cleanD.split('-');
-                if (parts.length === 3) {
-                    const m = parseInt(parts[1]) - 1;
-                    const amt = parseFloat(item.amount);
-
-                    if (dataMode === 'expense' && item.type === 'expense') monthlySums[m] += amt;
-                    else if (dataMode === 'income' && item.type === 'income') monthlySums[m] += amt;
-                    else if (dataMode === 'balance') monthlySums[m] += (item.type === 'income' ? amt : -amt);
-                }
+            // Akuálne výdavky tento mesiac
+            const thisMonthExpenses = transactions.filter(t => {
+                const d = new Date(t.date);
+                return d.getFullYear() === currentYear && d.getMonth() === currentMonth && t.type === 'expense';
             });
 
-            labels = monthNames;
-            datasetData = monthlySums;
-        }
+            const currentTotalSpend = thisMonthExpenses.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+            const dailyBurnRate = currentDay > 0 ? (currentTotalSpend / currentDay) : 0;
+            const projectedTotalSpend = dailyBurnRate * totalDaysInMonth;
 
-        // Vykreslenie/Update Chart.js
-        const ctx = document.getElementById('analyticsChart').getContext('2d');
-        if (analyticsChartInstance) { analyticsChartInstance.destroy(); }
+            // Výdavky minulý mesiac k rovnakému dňu
+            const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
+            const lastMonthYear = lastMonthDate.getFullYear();
+            const lastMonth = lastMonthDate.getMonth();
 
-        analyticsChartInstance = new Chart(ctx, {
-            type: chartType,
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: datasetData,
-                    backgroundColor: backgroundColors,
-                    borderWidth: 0,
-                    borderRadius: chartType === 'bar' ? 6 : 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: chartType === 'doughnut',
-                        position: 'bottom',
-                        labels: { color: textColor, font: { family: 'Plus Jakarta Sans', size: 9, weight: '700' }, boxWidth: 10 }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const val = context.parsed || context.raw || 0;
-                                const pct = totalSelectedModeSum > 0 ? ((val / totalSelectedModeSum) * 100).toFixed(1) : '0.0';
-                                return ` ${val.toFixed(2)} € (${pct}%)`;
-                            }
-                        }
-                    }
-                },
-                scales: chartType === 'bar' ? {
-                    x: { ticks: { color: textColor, font: { size: 9, weight: '700' } }, grid: { display: false } },
-                    y: { ticks: { color: textColor, font: { size: 9 } }, grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' } }
-                } : {}
+            const lastMonthExpensesToSameDay = transactions.filter(t => {
+                const d = new Date(t.date);
+                return d.getFullYear() === lastMonthYear && 
+                       d.getMonth() === lastMonth && 
+                       d.getDate() <= currentDay && 
+                       t.type === 'expense';
+            });
+
+            const lastMonthTotalToSameDay = lastMonthExpensesToSameDay.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
+            // Výpočet percentuálneho porovnania tempa
+            let diffPercent = 0;
+            if (lastMonthTotalToSameDay > 0) {
+                diffPercent = ((currentTotalSpend - lastMonthTotalToSameDay) / lastMonthTotalToSameDay) * 100;
             }
-        });
 
-        // Sumárny modul a percentuálny rozpad pod grafom
-        const statsContainer = document.getElementById('chart-stats-summary');
-        
-        let breakdownHtml = '';
-        if (chartType === 'doughnut' && Object.keys(aggregatedMap).length > 0) {
-            const sortedKeys = Object.keys(aggregatedMap).sort((a,b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]));
-            breakdownHtml = `
-                <div class="bg-white dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1.5">
-                    <div class="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-2">Podiel podľa ${levelMode === 'sub' ? 'Podkategórií' : 'Kategórií'}</div>
-                    ${sortedKeys.map((k, idx) => {
-                        const val = Math.abs(aggregatedMap[k]);
-                        const pct = totalSelectedModeSum > 0 ? ((val / totalSelectedModeSum) * 100).toFixed(1) : '0.0';
-                        const color = backgroundColors[idx % backgroundColors.length];
-                        return `
-                            <div class="flex items-center justify-between text-xs">
-                                <div class="flex items-center gap-2 truncate pr-2">
-                                    <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${color}"></span>
-                                    <span class="font-bold text-slate-700 dark:text-slate-200 truncate">${k}</span>
-                                </div>
-                                <div class="font-extrabold flex items-center gap-2 shrink-0">
-                                    <span class="text-slate-400 font-medium text-[10px]">${val.toFixed(2)} €</span>
-                                    <span class="text-emerald-500 min-w-[45px] text-right">${pct}%</span>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        }
+            // Render do UI
+            document.getElementById('burn-rate-daily').innerText = `${dailyBurnRate.toFixed(2)} €`;
+            document.getElementById('burn-rate-current-total').innerText = `Minuté: ${currentTotalSpend.toFixed(2)} €`;
+            document.getElementById('burn-rate-pace-projected').innerText = `Odhad: ${projectedTotalSpend.toFixed(2)} €`;
 
-        statsContainer.innerHTML = `
-            <div class="grid grid-cols-2 gap-2">
-                <div class="bg-slate-100 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200/50 dark:border-slate-800">
-                    <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider">Celkové Výdavky</span>
-                    <div class="text-sm font-extrabold text-slate-700 dark:text-slate-200">${totalExp.toFixed(2)} €</div>
-                </div>
-                <div class="bg-slate-100 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200/50 dark:border-slate-800">
-                    <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider">Celkové Príjmy</span>
-                    <div class="text-sm font-extrabold text-emerald-500">${totalInc.toFixed(2)} €</div>
-                </div>
-            </div>
-            ${breakdownHtml}
-        `;
-    }
+            // Progress Bar podľa pretečeného času v mesiaci
+            const monthProgressPercent = Math.min((currentDay / totalDaysInMonth) * 100, 100);
+            document.getElementById('burn-rate-progress-fill').style.width = `${monthProgressPercent}%`;
 
-    function saveCurrentPreset() {
-        const name = prompt("Názov pre nový náhľad grafu:", "Môj pohľad");
-        if (!name) return;
-
-        const preset = {
-            id: 'p-' + Date.now(),
-            name: name,
-            chartType: document.getElementById('chart-type').value,
-            levelMode: document.getElementById('chart-level-mode').value,
-            dataMode: document.getElementById('chart-data-mode').value,
-            userFilter: document.getElementById('chart-user-filter').value,
-            period: selectedChartPeriod
-        };
-
-        chartPresets.push(preset);
-        localStorage.setItem('f_chart_presets_v20', JSON.stringify(chartPresets));
-        renderPresets();
-    }
-
-    function applyPreset(id) {
-        const p = chartPresets.find(x => x.id === id);
-        if (!p) return;
-
-        document.getElementById('chart-type').value = p.chartType;
-        if(p.levelMode) document.getElementById('chart-level-mode').value = p.levelMode;
-        document.getElementById('chart-data-mode').value = p.dataMode;
-        document.getElementById('chart-user-filter').value = p.userFilter;
-        if (p.period) setChartPeriod(p.period);
-        else updateAnalytics();
-    }
-
-    function deletePreset(id, e) {
-        e.stopPropagation();
-        chartPresets = chartPresets.filter(x => x.id !== id);
-        localStorage.setItem('f_chart_presets_v20', JSON.stringify(chartPresets));
-        renderPresets();
-    }
-
-    function renderPresets() {
-        const container = document.getElementById('presets-container');
-        if (chartPresets.length === 0) {
-            container.innerHTML = `<span class="text-[9px] text-slate-400 font-extrabold uppercase px-1">Žiadne uložené náhľady</span>`;
-            return;
-        }
-
-        container.innerHTML = chartPresets.map(p => `
-            <div onclick="applyPreset('${p.id}')" class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-[9px] font-extrabold uppercase cursor-pointer shrink-0">
-                <span>${p.name}</span>
-                <button type="button" onclick="deletePreset('${p.id}', event)" class="text-slate-400 hover:text-red-400"><i data-lucide="x" class="w-3 h-3"></i></button>
-            </div>
-        `).join('');
-        lucide.createIcons();
-    }
-
-    /* --- SWIPE GESTÁ --- */
-    let swipeStartX = 0;
-    let swipeStartY = 0;
-    let swipeCurrentX = 0;
-    let isHorizontalSwipe = false;
-
-    function handleSwipeStart(e, id) {
-        swipeStartX = e.touches[0].clientX;
-        swipeStartY = e.touches[0].clientY;
-        swipeCurrentX = 0;
-        isHorizontalSwipe = false;
-
-        const content = document.getElementById(`item-${id}`);
-        if(content) content.classList.add('swiping');
-    }
-
-    function handleSwipeMove(e, id) {
-        const touchX = e.touches[0].clientX;
-        const touchY = e.touches[0].clientY;
-        const diffX = touchX - swipeStartX;
-        const diffY = touchY - swipeStartY;
-
-        if (!isHorizontalSwipe && Math.abs(diffY) > Math.abs(diffX)) {
-            return;
-        }
-
-        if (Math.abs(diffX) > 10) {
-            isHorizontalSwipe = true;
-        }
-
-        if (isHorizontalSwipe) {
-            swipeCurrentX = diffX;
-            const content = document.getElementById(`item-${id}`);
-            const bg = document.getElementById(`bg-${id}`);
-
-            if (content && bg) {
-                content.style.transform = `translateX(${diffX}px)`;
-                bg.style.opacity = '1';
-
-                if (diffX > 0) {
-                    bg.style.backgroundColor = 'rgba(16, 185, 129, 0.9)';
-                } else if (diffX < 0) {
-                    bg.style.backgroundColor = 'rgba(239, 68, 68, 0.9)';
-                }
-            }
-        }
-    }
-
-    function handleSwipeEnd(e, id, isProcessed) {
-        const content = document.getElementById(`item-${id}`);
-        const bg = document.getElementById(`bg-${id}`);
-        
-        if(content) {
-            content.classList.remove('swiping');
-            content.style.transform = '';
-        }
-        if(bg) {
-            bg.style.opacity = '0';
-        }
-
-        const threshold = 75;
-
-        if (isHorizontalSwipe && swipeCurrentX > threshold) {
-            toggleProcessed(id);
-        } else if (isHorizontalSwipe && swipeCurrentX < -threshold) {
-            handleDelete(id);
-        } else if (!isHorizontalSwipe && Math.abs(swipeCurrentX) < 5) {
-            const endTouchY = e.changedTouches[0].clientY;
-            if (Math.abs(endTouchY - swipeStartY) < 10) {
-                openModal(id);
+            // Status Tag
+            const statusTag = document.getElementById('burn-rate-status-tag');
+            if (diffPercent <= 0) {
+                statusTag.className = 'status-tag status-good';
+                statusTag.innerText = `${diffPercent.toFixed(1)}% vs min. mesiac`;
+            } else {
+                statusTag.className = 'status-tag status-warning';
+                statusTag.innerText = `+${diffPercent.toFixed(1)}% vs min. mesiac`;
             }
         }
 
-        swipeStartX = 0;
-        swipeStartY = 0;
-        swipeCurrentX = 0;
-        isHorizontalSwipe = false;
-    }
-
-    function renderSummary(sums, statusFiltered) {
-        const container = document.getElementById('category-summary');
-        let html = `<div class="flex gap-2 overflow-x-auto no-scrollbar w-full pb-1">`;
-        html += Object.keys(sums).sort((a,b) => sums[b] - sums[a]).map(cat => `
-            <div onclick="toggleFilter('${cat}')" class="summary-card flex-shrink-0 px-3 py-2 rounded-xl cursor-pointer ${activeCategoryFilter === cat ? 'active-filter' : ''}">
-                <div class="text-[7.5px] font-black ${activeCategoryFilter === cat ? 'text-amber-500' : 'text-slate-400'} uppercase truncate tracking-wider">${cat}</div>
-                <div class="text-[10px] font-extrabold">${sums[cat].toFixed(2)}€</div>
-            </div>`).join('');
-        html += `</div>`;
-
-        if (activeCategoryFilter) {
-            const catObj = categories.find(c => c.id === activeCategoryFilter);
-            if (catObj && catObj.subs && catObj.subs.length > 0) {
-                html += `<div class="flex gap-1.5 overflow-x-auto no-scrollbar w-full mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 pb-1">`;
-                html += catObj.subs.map(sub => {
-                    const isActive = window.activeSubFilter === sub;
-                    
-                    const subSum = statusFiltered
-                        .filter(item => item.category === activeCategoryFilter && item.sub === sub && item.type === 'expense')
-                        .reduce((acc, curr) => acc + curr.amount, 0);
-
-                    return `<button type="button" onclick="toggleSubFilter('${sub}')" class="flex-shrink-0 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${isActive ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}">${sub} (${subSum.toFixed(2)}€)</button>`;
-                }).join('');
-                html += `</div>`;
-            }
+        // --- HELPER UNIFIED TOAST ---
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
         }
-        container.innerHTML = html;
-    }
-
-    function toggleSubFilter(sub) {
-        window.activeSubFilter = (window.activeSubFilter === sub) ? null : sub;
-        renderList();
-    }
-
-    function renderCatGrid() { 
-        document.getElementById('cat-grid').innerHTML = categories.map(c => `<button type="button" onclick="selectCat('${c.id}', event)" data-id="${c.id}" class="cat-tile flex flex-col items-center justify-center p-1 rounded-2xl shadow-sm"><i data-lucide="${c.icon || 'layers'}"></i><span class="truncate w-full">${c.id}</span></button>`).join(''); 
-        lucide.createIcons(); 
-    }
-    
-    function toggleFilter(cat) { 
-        if (activeCategoryFilter === cat) {
-            activeCategoryFilter = null;
-            window.activeSubFilter = null;
-        } else {
-            activeCategoryFilter = cat;
-            window.activeSubFilter = null;
-        }
-        renderList(); 
-    }
-
-    function resetCategoryFilter() { 
-        activeCategoryFilter = null; 
-        window.activeSubFilter = null;
-        renderList(); 
-    }
-
-    function toggleStatusFilter() { currentStatusFilter = (currentStatusFilter === 'unprocessed') ? 'all' : 'unprocessed'; document.getElementById('ui-toggle').classList.toggle('all-active', currentStatusFilter === 'all'); renderList(); }
-    
-    function toggleProcessed(id) { 
-        let updatedEntry = null;
-        db = db.map(x => {
-            if (String(x.id) === String(id)) {
-                updatedEntry = {...x, processed: !x.processed};
-                return updatedEntry;
-            }
-            return x;
-        }); 
-        
-        if (updatedEntry) {
-            syncQueue.push({ ...updatedEntry, action: 'save' }); 
-            saveData(false); 
-            renderList(); 
-            updateAnalytics();
-            processSyncQueue();
-        }
-    }
-    
-    function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
-    
-    function updateTotals(filteredData) { 
-        const bal = filteredData.reduce((s, x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); 
-        document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; 
-        
-        const label = document.getElementById('balance-label');
-        if (window.activeSubFilter) {
-            label.innerText = `${activeCategoryFilter} / ${window.activeSubFilter}`;
-        } else if (activeCategoryFilter) {
-            label.innerText = activeCategoryFilter;
-        } else {
-            label.innerText = "SPOLU";
-        }
-    }
-
-    function manualSync() { syncCategories('pull'); syncTransactions('pull'); processSyncQueue(); }
-
-    function initTimeFilters() { 
-        const ySelect = document.getElementById('filter-year');
-        const now = new Date(); 
-        
-        renderMonthChips();
-
-        const years = [...new Set([now.getFullYear(), ...db.map(x => {
-            const dateParts = getCleanDateStr(x.date).split('-');
-            return dateParts.length === 3 ? parseInt(dateParts[0]) : now.getFullYear();
-        })])].sort((a,b) => b-a);
-
-        ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
-        
-        if (selectedMonths.length > 0) {
-            setTimeout(() => scrollToActiveMonth(selectedMonths[0]), 200);
-        }
-    }
-
-    function setUser(u) { curUser = u; localStorage.setItem('f_last_user', u); ['Lukáš', 'Zdenka'].forEach(user => { const btn = document.getElementById(`u-${user}`); if(btn) btn.className = user === u ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }); }
-    function setType(t) { curType = t; document.getElementById('t-ex').className = t === 'expense' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-red-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; document.getElementById('t-in').className = t === 'income' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }
-    
-    window.onload = () => { initTimeFilters(); renderList(); renderCatGrid(); updateSyncUI('ok'); syncCategories('pull'); syncTransactions('pull'); };
-</script>
+    </script>
 </body>
 </html>
