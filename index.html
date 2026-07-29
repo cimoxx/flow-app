@@ -279,12 +279,17 @@
         <div id="chart-stats-summary" class="space-y-3 pt-1"></div>
     </main>
 
-    <!-- SPODNÁ NAVIGÁCIA -->
-    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-nav flex justify-around items-center h-16 z-30">
-        <button id="nav-home" onclick="showScreen('home')" class="nav-btn active p-4"><i data-lucide="layout-grid"></i></button>
-        <button id="nav-analytics" onclick="showScreen('analytics')" class="nav-btn p-4"><i data-lucide="pie-chart"></i></button>
-        <button onclick="openModal()" class="bg-emerald-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg -mt-8 border-4 border-white dark:border-slate-900 active:scale-95 transition-all"><i data-lucide="plus" class="w-7 h-7"></i></button>
-        <button id="nav-settings" onclick="showScreen('settings')" class="nav-btn p-4"><i data-lucide="settings"></i></button>
+    <!-- SPODNÁ NAVIGÁCIA (VYCENTROVANÉ TLAČIDLO PRIDAŤ TRANSAKCIU) -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-nav flex justify-between items-center h-16 px-6 z-30">
+        <button id="nav-home" onclick="showScreen('home')" class="nav-btn active p-3"><i data-lucide="layout-grid"></i></button>
+        <button id="nav-analytics" onclick="showScreen('analytics')" class="nav-btn p-3"><i data-lucide="pie-chart"></i></button>
+        
+        <div class="flex items-center justify-center">
+            <button onclick="openModal()" class="bg-emerald-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg -mt-6 border-4 border-white dark:border-slate-900 active:scale-95 transition-all"><i data-lucide="plus" class="w-7 h-7"></i></button>
+        </div>
+        
+        <button id="nav-settings" onclick="showScreen('settings')" class="nav-btn p-3"><i data-lucide="settings"></i></button>
+        <div class="w-6"></div> <!-- Pomocný vyrovnávací spacer -->
     </nav>
 </div>
 
@@ -330,7 +335,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.10.0</h3>
+                <h3 class="text-xl font-extrabold">v2.11.0</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -340,10 +345,20 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.10.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.11.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Vytvorená samostatná, prehľadná karta pre <b>Burn Rate</b> v súlade s UI/UX pravidlami.</li>
+                    <li>Synchronizovaný presný výpočet denných a mesačných priemerov Burn Rate medzi kartou a stĺpcovým grafom.</li>
+                    <li>Vycentrované hlavné akčné tlačidlo pre pridanie transakcie na spodnej navigácii.</li>
+                </ul>
+            </div>
+            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.10.0</span>
+                </div>
+                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
                     <li>Pridaná metrika <b>Burn Rate</b> (priemerné denné a odhadované mesačné výdavky) a dedikovaný stĺpcový graf mesačného tempa na spodku analýz.</li>
                     <li>Optimalizovaný výpočet časových úsekov na základe aktívneho filtra obdobia.</li>
                 </ul>
@@ -1021,7 +1036,7 @@
         });
     }
 
-    /* VÝPOČET DŇOVÉHO RÁMCA PRE BURN RATE */
+    /* VÝPOČET DŇOVÉHO RÁMCA PRE BURN RATE (ZJEDNOTENÁ LOGIKA PRE KARTU AJ GRAF) */
     function getDaysCountForPeriod(filteredItems) {
         const now = new Date();
         if (selectedChartMonths.length > 0) {
@@ -1169,9 +1184,9 @@
             }
         });
 
-        /* CALCULATE BURN RATE METRICS */
+        /* SYNCHRONIZOVANÝ A PRESNÝ VÝPOČET BURN RATE METRÍK */
         const periodDays = getDaysCountForPeriod(filtered);
-        const dailyBurnRate = totalExp / periodDays;
+        const dailyBurnRate = periodDays > 0 ? totalExp / periodDays : 0;
         const monthlyBurnRate = dailyBurnRate * 30.5;
 
         const statsContainer = document.getElementById('chart-stats-summary');
@@ -1180,14 +1195,14 @@
         if (chartType === 'doughnut' && Object.keys(aggregatedMap).length > 0) {
             const sortedKeys = Object.keys(aggregatedMap).sort((a,b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]));
             breakdownHtml = `
-                <div class="bg-white dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1.5">
+                <div class="bg-white dark:bg-slate-800/80 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1.5 shadow-sm">
                     <div class="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-2">Podiel podľa ${levelMode === 'sub' ? 'Podkategórií' : 'Kategórií'}</div>
                     ${sortedKeys.map((k, idx) => {
                         const val = Math.abs(aggregatedMap[k]);
                         const pct = totalSelectedModeSum > 0 ? ((val / totalSelectedModeSum) * 100).toFixed(1) : '0.0';
                         const color = backgroundColors[idx % backgroundColors.length];
                         return `
-                            <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center justify-between text-xs py-0.5">
                                 <div class="flex items-center gap-2 truncate pr-2">
                                     <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${color}"></span>
                                     <span class="font-bold text-slate-700 dark:text-slate-200 truncate">${k}</span>
@@ -1203,7 +1218,7 @@
             `;
         }
 
-        /* BURN RATE A GRAF NA SPODKU POD TABUĽKOU A CELKOVÝMI VÝDAVKAMI */
+        /* VYTVORENIE SAMOSTATNEJ KARTY PRE BURN RATE */
         statsContainer.innerHTML = `
             <div class="grid grid-cols-2 gap-2">
                 <div class="bg-slate-100 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200/50 dark:border-slate-800">
@@ -1216,40 +1231,46 @@
                 </div>
             </div>
 
-            ${breakdownHtml}
-
-            <!-- BURN RATE KARTA VO FORMÁTE NA SPODKU S MESAČNÝM GRAFOM -->
-            <div class="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 p-3.5 rounded-2xl border border-amber-500/20 space-y-3 mt-4">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-1.5">
-                        <i data-lucide="flame" class="w-4 h-4 text-amber-500"></i>
-                        <span class="text-[9px] font-black uppercase text-amber-500 tracking-wider">Burn Rate (Tempo výdavkov)</span>
+            <!-- SAMOSTATNÁ KARTA BURN RATE (PODĽA UI/UX PRAVIDIEL A DIZAJNOVÉHO JAZYKA APLIKÁCIE) -->
+            <div class="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent p-4 rounded-3xl border border-amber-500/20 shadow-sm space-y-3">
+                <div class="flex justify-between items-center border-b border-amber-500/10 pb-2.5">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                            <i data-lucide="flame" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Burn Rate Analýza</h3>
+                            <span class="text-[8px] font-bold text-slate-400 uppercase tracking-tight">Tempo čerpania financií</span>
+                        </div>
                     </div>
-                    <span class="text-[8.5px] font-bold text-slate-400 uppercase">${Math.round(periodDays)} dní v období</span>
+                    <span class="text-[8.5px] font-black text-amber-500/80 bg-amber-500/10 px-2 py-0.5 rounded-md uppercase">${Math.round(periodDays)} dní</span>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Priemer / Deň</span>
+
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <div class="bg-white/60 dark:bg-slate-800/60 p-3 rounded-2xl border border-amber-500/10">
+                        <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block mb-0.5">Priemer / Deň</span>
                         <div class="text-base font-extrabold text-slate-800 dark:text-slate-100">${dailyBurnRate.toFixed(2)} €</div>
                     </div>
-                    <div>
-                        <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Odhad / Mesiac</span>
+                    <div class="bg-white/60 dark:bg-slate-800/60 p-3 rounded-2xl border border-amber-500/10">
+                        <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block mb-0.5">Odhad / Mesiac</span>
                         <div class="text-base font-extrabold text-amber-500">${monthlyBurnRate.toFixed(2)} €</div>
                     </div>
                 </div>
 
-                <!-- STĹPCOVÝ GRAF PRE MESAČNÝ BURN RATE -->
-                <div class="pt-2 border-t border-amber-500/20">
-                    <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block mb-2">Mesačný Burn Rate (Priemer €/deň)</span>
+                <!-- MESAČNÝ GRAF RÝCHLOSTI ČERPANIA VO VNÚTRI KARTY -->
+                <div class="pt-2">
+                    <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block mb-2">Mesačný priebeh tempo (€/deň)</span>
                     <div class="h-32 relative">
                         <canvas id="burnRateChart"></canvas>
                     </div>
                 </div>
             </div>
+
+            ${breakdownHtml}
         `;
         lucide.createIcons();
 
-        /* Vykreslenie stĺpcového grafu Burn Rate po mesiacoch */
+        /* Vykreslenie synchronizovaného stĺpcového grafu pre Burn Rate */
         renderBurnRateChart(filtered, userFilter, textColor, isDark);
     }
 
@@ -1261,12 +1282,12 @@
         const now = new Date();
         const curYear = now.getFullYear();
 
-        // Nastavíme presný počet dní pre jednotlivé mesiace aktuálneho/vybraného roka
+        // Nastavíme presný počet dní pre jednotlivé mesiace
         for(let m = 0; m < 12; m++) {
             if (m === now.getMonth()) {
-                monthlyDays[m] = Math.max(1, now.getDate()); // pre prebiehajúci mesiac len uplynuté dni
+                monthlyDays[m] = Math.max(1, now.getDate());
             } else {
-                monthlyDays[m] = new Date(curYear, m + 1, 0).getDate(); // počet dní v danom mesiaci
+                monthlyDays[m] = new Date(curYear, m + 1, 0).getDate();
             }
         }
 
@@ -1281,7 +1302,7 @@
             }
         });
 
-        // Výpočet denných priemerov po mesiacoch (€/deň)
+        // Výpočet denných priemerov po mesiacoch (€/deň) - identický so sumarizačnou kartou
         const monthlyBurnRates = monthlyExp.map((exp, idx) => {
             const days = monthlyDays[idx] || 30;
             return parseFloat((exp / days).toFixed(2));
@@ -1535,45 +1556,6 @@
     }
     
     function saveData(pushCats = true) { localStorage.setItem('f_db_v20', JSON.stringify(db)); localStorage.setItem('f_cats_v20', JSON.stringify(categories)); localStorage.setItem('f_sync_q_v20', JSON.stringify(syncQueue)); if(pushCats) syncCategories('push'); }
-    
-    function updateTotals(filteredData) { 
-        const bal = filteredData.reduce((s, x) => x.type === 'income' ? s + parseFloat(x.amount) : s - parseFloat(x.amount), 0); 
-        document.getElementById('display-balance').innerText = bal.toLocaleString('sk-SK', {minimumFractionDigits:2}) + ' €'; 
-        
-        const label = document.getElementById('balance-label');
-        if (window.activeSubFilter) {
-            label.innerText = `${activeCategoryFilter} / ${window.activeSubFilter}`;
-        } else if (activeCategoryFilter) {
-            label.innerText = activeCategoryFilter;
-        } else {
-            label.innerText = "SPOLU";
-        }
-    }
-
-    function manualSync() { syncCategories('pull'); syncTransactions('pull'); processSyncQueue(); }
-
-    function initTimeFilters() { 
-        const ySelect = document.getElementById('filter-year');
-        const now = new Date(); 
-        
-        renderMonthChips();
-
-        const years = [...new Set([now.getFullYear(), ...db.map(x => {
-            const dateParts = getCleanDateStr(x.date).split('-');
-            return dateParts.length === 3 ? parseInt(dateParts[0]) : now.getFullYear();
-        })])].sort((a,b) => b-a);
-
-        ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
-        
-        if (selectedMonths.length > 0) {
-            setTimeout(() => scrollToActiveMonth(selectedMonths[0]), 200);
-        }
-    }
-
-    function setUser(u) { curUser = u; localStorage.setItem('f_last_user', u); ['Lukáš', 'Zdenka'].forEach(user => { const btn = document.getElementById(`u-${user}`); if(btn) btn.className = user === u ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }); }
-    function setType(t) { curType = t; document.getElementById('t-ex').className = t === 'expense' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-red-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; document.getElementById('t-in').className = t === 'income' ? 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'flex-1 py-1.5 rounded-lg text-[9.5px] font-black text-slate-400'; }
-    
-    window.onload = () => { initTimeFilters(); renderList(); renderCatGrid(); updateSyncUI('ok'); syncCategories('pull'); syncTransactions('pull'); };
 </script>
 </body>
 </html>
