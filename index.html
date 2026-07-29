@@ -330,7 +330,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.9.0</h3>
+                <h3 class="text-xl font-extrabold">v2.10.0</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -340,10 +340,19 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.9.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.10.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Pridaná metrika <b>Burn Rate</b> (priemerné denné a odhadované mesačné výdavky) do sekcie analýz.</li>
+                    <li>Optimalizovaný výpočet časových úsekov na základe aktívneho filtra obdobia.</li>
+                </ul>
+            </div>
+            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.9.0</span>
+                </div>
+                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
                     <li>Pridaná podpora pre filtrovanie konkrétnych mesiacov pri grafe.</li>
                     <li>Pridané zobrazenie grafu pre podkategórie.</li>
                     <li>Pridaná možnosť úpravy/editácie názvu kategórií aj podkategórií v Admin zóne.</li>
@@ -701,10 +710,8 @@
             const cat = categories[activeSettingsCat];
             const deletedSubName = cat.subs[index];
             
-            // Bezpečné odstránenie konkrétnej podkategórie pri zachovaní ostatných
             cat.subs.splice(index, 1); 
             
-            // Vyčistenie odkazu na zmazanú podkategóriu pri existujúcich transakciách
             db.forEach(item => {
                 if (item.category === cat.id && item.sub === deletedSubName) {
                     item.sub = '';
@@ -964,7 +971,7 @@
         lucide.createIcons();
     }
 
-    /* --- LOGIKA PRE GRAFY A NÁHĽADY (VÝBER OBDOBIA, KONKRÉTNYCH MESIACOV & PODKATEGÓRIE) --- */
+    /* --- LOGIKA PRE GRAFY A NÁHĽADY --- */
     function setChartPeriod(period) {
         selectedChartPeriod = period;
         selectedChartMonths = [];
@@ -1011,6 +1018,34 @@
             }
             return true;
         });
+    }
+
+    /* VÝPOČET DŇOVÉHO RÁMCA PRE BURN RATE */
+    function getDaysCountForPeriod(filteredItems) {
+        const now = new Date();
+        if (selectedChartMonths.length > 0) {
+            return selectedChartMonths.length * 30.5;
+        }
+
+        if (selectedChartPeriod === 'current_month') {
+            return Math.max(1, now.getDate());
+        } else if (selectedChartPeriod === '3m') {
+            return 90;
+        } else if (selectedChartPeriod === '6m') {
+            return 180;
+        } else if (selectedChartPeriod === 'year') {
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+            const diffTime = Math.abs(now - startOfYear);
+            return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        } else if (selectedChartPeriod === 'all') {
+            if (filteredItems.length === 0) return 1;
+            const dates = filteredItems.map(i => new Date(getCleanDateStr(i.date)).getTime()).filter(t => !isNaN(t));
+            if (dates.length === 0) return 1;
+            const minDate = new Date(Math.min(...dates));
+            const diffTime = Math.abs(now - minDate);
+            return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        }
+        return 30;
     }
 
     function updateAnalytics() {
@@ -1133,6 +1168,11 @@
             }
         });
 
+        /* CALCULATE BURN RATE METRICS */
+        const periodDays = getDaysCountForPeriod(filtered);
+        const dailyBurnRate = totalExp / periodDays;
+        const monthlyBurnRate = dailyBurnRate * 30.5;
+
         const statsContainer = document.getElementById('chart-stats-summary');
         
         let breakdownHtml = '';
@@ -1163,6 +1203,27 @@
         }
 
         statsContainer.innerHTML = `
+            <!-- BURN RATE KARTA -->
+            <div class="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 p-3.5 rounded-2xl border border-amber-500/20 space-y-2">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="flame" class="w-4 h-4 text-amber-500"></i>
+                        <span class="text-[9px] font-black uppercase text-amber-500 tracking-wider">Burn Rate (Tempo výdavkov)</span>
+                    </div>
+                    <span class="text-[8.5px] font-bold text-slate-400 uppercase">${Math.round(periodDays)} dní v období</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                        <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Priemer / Deň</span>
+                        <div class="text-base font-extrabold text-slate-800 dark:text-slate-100">${dailyBurnRate.toFixed(2)} €</div>
+                    </div>
+                    <div>
+                        <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider block">Odhad / Mesiac</span>
+                        <div class="text-base font-extrabold text-amber-500">${monthlyBurnRate.toFixed(2)} €</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-2">
                 <div class="bg-slate-100 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200/50 dark:border-slate-800">
                     <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider">Celkové Výdavky</span>
@@ -1175,6 +1236,7 @@
             </div>
             ${breakdownHtml}
         `;
+        lucide.createIcons();
     }
 
     function saveCurrentPreset() {
