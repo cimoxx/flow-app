@@ -10,6 +10,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Knižnica pre grafy -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght=600;700;800&family=Plus+Jakarta+Sans:wght=400;500;600;700;800&display=swap');
         
@@ -108,7 +110,7 @@
             font-weight: 600;
         }
 
-        /* --- SWIPE GESTÁ STYLY --- */
+        /* SWIPE GESTÁ STYLY */
         .swipe-wrapper {
             position: relative;
             overflow: hidden;
@@ -129,7 +131,7 @@
             letter-spacing: 0.05em;
             color: white;
             transition: background-color 0.2s ease, opacity 0.15s ease;
-            opacity: 0; /* Skryté v nečinnom stave, aby nepresvitalo cez priehľadné karty */
+            opacity: 0;
         }
         .swipe-content {
             position: relative;
@@ -152,11 +154,15 @@
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
         }
+
+        .nav-btn { color: var(--text-dim); transition: color 0.2s; }
+        .nav-btn.active { color: var(--accent); }
     </style>
 </head>
 <body>
 
 <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col pb-24 app-container shadow-2xl">
+    <!-- HLAVIČKA -->
     <header class="p-5 border-b sticky top-0 z-20 app-container">
         <div class="flex justify-between items-end mb-4">
             <div class="flex items-center gap-3">
@@ -179,7 +185,8 @@
         <div id="category-summary" class="flex flex-col gap-0"></div>
     </header>
 
-    <main class="p-4 flex-1">
+    <!-- HLAVNÁ OBRAZOVKA (TRANSAKCIE) -->
+    <main id="screen-home" class="p-4 flex-1">
         <div class="flex flex-col gap-3 mb-4">
             <div class="flex gap-2 items-center">
                 <div id="filter-months-container" class="flex-1 flex gap-1.5 overflow-x-auto no-scrollbar py-1"></div>
@@ -197,13 +204,64 @@
         <div id="transaction-list" class="space-y-4"></div>
     </main>
 
+    <!-- OBRAZOVKA GRAFOV -->
+    <main id="screen-analytics" class="p-4 flex-1 hidden space-y-4">
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-xl font-extrabold">Grafická analýza</h2>
+            <button onclick="saveCurrentPreset()" class="text-[10px] font-extrabold bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-xl border border-emerald-500/20 active:scale-95 transition-all flex items-center gap-1">
+                <i data-lucide="bookmark" class="w-3 h-3"></i> Uložiť pohľad
+            </button>
+        </div>
+
+        <!-- Uložené náhľady (Presets) -->
+        <div id="presets-container" class="flex gap-1.5 overflow-x-auto no-scrollbar py-1"></div>
+
+        <!-- Ovládacie prvky grafu -->
+        <div class="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 text-[10px]">
+            <div>
+                <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">Typ Grafu</label>
+                <select id="chart-type" onchange="updateAnalytics()" class="w-full p-2 outline-none text-xs">
+                    <option value="doughnut">Koláčový</option>
+                    <option value="bar">Stĺpcový</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">Dáta</label>
+                <select id="chart-data-mode" onchange="updateAnalytics()" class="w-full p-2 outline-none text-xs">
+                    <option value="expense">Výdavky</option>
+                    <option value="income">Príjmy</option>
+                    <option value="balance">Bilancia</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">Osoba</label>
+                <select id="chart-user-filter" onchange="updateAnalytics()" class="w-full p-2 outline-none text-xs">
+                    <option value="all">Všetci</option>
+                    <option value="Lukáš">Lukáš</option>
+                    <option value="Zdenka">Zdenka</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Plátno pre Chart.js -->
+        <div class="bg-white dark:bg-slate-800/80 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm relative min-h-[300px] flex items-center justify-center">
+            <canvas id="analyticsChart" class="max-h-[320px]"></canvas>
+        </div>
+
+        <!-- Sumárne štatistiky pod grafom -->
+        <div id="chart-stats-summary" class="grid grid-cols-2 gap-2 pt-1"></div>
+    </main>
+
+    <!-- SPODNÁ NAVIGÁCIA -->
     <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto glass-nav flex justify-around items-center h-16 z-30">
-        <button onclick="showScreen('home')" class="text-emerald-500 p-4"><i data-lucide="layout-grid"></i></button>
+        <button id="nav-home" onclick="showScreen('home')" class="nav-btn active p-4"><i data-lucide="layout-grid"></i></button>
+        <button id="nav-analytics" onclick="showScreen('analytics')" class="nav-btn p-4"><i data-lucide="pie-chart"></i></button>
         <button onclick="openModal()" class="bg-emerald-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg -mt-8 border-4 border-white dark:border-slate-900 active:scale-95 transition-all"><i data-lucide="plus" class="w-7 h-7"></i></button>
-        <button onclick="showScreen('settings')" class="text-slate-400 p-4"><i data-lucide="settings"></i></button>
+        <button id="nav-settings" onclick="showScreen('settings')" class="nav-btn p-4"><i data-lucide="settings"></i></button>
     </nav>
 </div>
 
+<!-- MODAL PRE PRIDANIE / EDITÁCIU TRANSAKCIE -->
 <div id="modal-overlay" class="fixed inset-0 bg-slate-900/90 z-[40] hidden backdrop-blur-sm flex items-end">
     <div class="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-[2.5rem] p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-6 sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10">
@@ -239,12 +297,13 @@
     </div>
 </div>
 
+<!-- CHANGELOG MODAL -->
 <div id="changelog-modal" class="fixed inset-0 bg-slate-900/90 z-[50] hidden backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4 max-h-[85vh] overflow-y-auto">
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.6.3</h3>
+                <h3 class="text-xl font-extrabold">v2.7.0</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -254,13 +313,13 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.6.3</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.7.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Opravený presvitajúci text (vodoznak) pod spracovanými transakciami.</li>
-                    <li>Premiestnená fajočka na pravú stranu transakcie.</li>
-                    <li>Opravená vysoká citlivosť na scrolovanie.</li>
+                    <li>Pridaná nová karta / tab pre Grafickú analýzu.</li>
+                    <li>Možnosť prispôsobiť typ grafu, dát a filtru osobnosti.</li>
+                    <li>Ukladanie a načítanie vlastných predvolených náhľadov (Presets).</li>
                 </ul>
             </div>
         </div>
@@ -269,6 +328,7 @@
     </div>
 </div>
 
+<!-- OBRAZOVKA NASTAVENÍ -->
 <div id="settings-screen" class="fixed inset-0 bg-white dark:bg-slate-900 z-50 hidden p-6 max-w-md mx-auto overflow-y-auto pb-24">
     <div id="settings-home">
         <div class="flex items-center gap-4 mb-6"><button onclick="showScreen('home')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><i data-lucide="arrow-left"></i></button><h2 class="text-xl font-extrabold">Nastavenia</h2></div>
@@ -310,11 +370,13 @@
     let db = JSON.parse(localStorage.getItem('f_db_v20')) || [];
     let syncQueue = JSON.parse(localStorage.getItem('f_sync_q_v20')) || [];
     let categories = JSON.parse(localStorage.getItem('f_cats_v20')) || [];
+    let chartPresets = JSON.parse(localStorage.getItem('f_chart_presets_v20')) || [];
     let curUser = localStorage.getItem('f_last_user') || 'Lukáš';
     
     let curType = 'expense', selectedCat = '', selectedSub = '', activeCategoryFilter = null, isSyncing = false;
     let currentStatusFilter = 'unprocessed', activeSettingsCat = null;
     window.activeSubFilter = null;
+    let analyticsChartInstance = null;
 
     let selectedMonths = [new Date().getMonth()];
 
@@ -407,6 +469,7 @@
                     });
                     localStorage.setItem('f_db_v20', JSON.stringify(db)); 
                     renderList(); 
+                    updateAnalytics();
                 } 
             } catch (e) { console.error("Sync error:", e); }
             updateSyncUI('ok');
@@ -499,6 +562,7 @@
         saveData(false); 
         closeModal(); 
         renderList(); 
+        updateAnalytics();
         processSyncQueue();
     }
 
@@ -510,6 +574,7 @@
             saveData(false); 
             closeModal(); 
             renderList(); 
+            updateAnalytics();
             processSyncQueue(); 
         } 
     }
@@ -581,7 +646,27 @@
 
     function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
     function closeCatDetail() { activeSettingsCat = null; document.getElementById('settings-cat-detail').classList.add('hidden'); document.getElementById('settings-home').classList.remove('hidden'); renderManageCats(); }
-    function showScreen(s) { document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings'); if(s === 'settings') { activeSettingsCat = null; closeCatDetail(); renderManageCats(); } else renderList(); }
+    
+    function showScreen(s) { 
+        document.getElementById('screen-home').classList.toggle('hidden', s !== 'home');
+        document.getElementById('screen-analytics').classList.toggle('hidden', s !== 'analytics');
+        document.getElementById('settings-screen').classList.toggle('hidden', s !== 'settings');
+
+        document.getElementById('nav-home').classList.toggle('active', s === 'home');
+        document.getElementById('nav-analytics').classList.toggle('active', s === 'analytics');
+        document.getElementById('nav-settings').classList.toggle('active', s === 'settings');
+
+        if(s === 'settings') { 
+            activeSettingsCat = null; 
+            closeCatDetail(); 
+            renderManageCats(); 
+        } else if (s === 'analytics') {
+            renderPresets();
+            updateAnalytics();
+        } else {
+            renderList();
+        }
+    }
     
     async function syncCategories(action = 'push') {
         updateSyncUI('syncing');
@@ -598,6 +683,7 @@
         }
         renderMonthChips();
         renderList();
+        updateAnalytics();
         scrollToActiveMonth(monthIdx);
     }
 
@@ -635,11 +721,9 @@
         return cleanDate;
     }
 
-    function renderList() {
-        const list = document.getElementById('transaction-list');
+    function getFilteredData() {
         const selYear = parseInt(document.getElementById('filter-year').value);
-        
-        let currentFiltered = db.filter(d => { 
+        return db.filter(d => { 
             const cleanDate = getCleanDateStr(d.date);
             const parts = cleanDate.split('-');
             if (parts.length === 3) {
@@ -650,6 +734,11 @@
             }
             return false;
         });
+    }
+
+    function renderList() {
+        const list = document.getElementById('transaction-list');
+        let currentFiltered = getFilteredData();
         
         if (currentStatusFilter === 'unprocessed') {
             currentFiltered = currentFiltered.filter(d => !d.processed);
@@ -742,7 +831,172 @@
         lucide.createIcons();
     }
 
-    /* --- SWIPE GESTÁ A RIADENIE ZOBRAZENIA POZADIA --- */
+    /* --- LOGIKA PRE GRAFY A NÁHĽADY --- */
+    function updateAnalytics() {
+        if (document.getElementById('screen-analytics').classList.contains('hidden')) return;
+
+        const chartType = document.getElementById('chart-type').value;
+        const dataMode = document.getElementById('chart-data-mode').value;
+        const userFilter = document.getElementById('chart-user-filter').value;
+
+        let filtered = getFilteredData();
+
+        if (userFilter !== 'all') {
+            filtered = filtered.filter(d => (d.user || 'Lukáš') === userFilter);
+        }
+
+        const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const textColor = isDark ? '#94a3b8' : '#64748b';
+
+        let labels = [];
+        let datasetData = [];
+        let backgroundColors = [
+            '#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', 
+            '#06b6d4', '#f97316', '#64748b', '#84cc16', '#a855f7'
+        ];
+
+        let totalExp = 0, totalInc = 0;
+
+        if (chartType === 'doughnut') {
+            const catMap = {};
+            filtered.forEach(item => {
+                const amt = parseFloat(item.amount);
+                if (item.type === 'expense') totalExp += amt;
+                if (item.type === 'income') totalInc += amt;
+
+                if (dataMode === 'expense' && item.type === 'expense') {
+                    catMap[item.category] = (catMap[item.category] || 0) + amt;
+                } else if (dataMode === 'income' && item.type === 'income') {
+                    catMap[item.category] = (catMap[item.category] || 0) + amt;
+                } else if (dataMode === 'balance') {
+                    const val = item.type === 'income' ? amt : -amt;
+                    catMap[item.category] = (catMap[item.category] || 0) + val;
+                }
+            });
+
+            labels = Object.keys(catMap);
+            datasetData = labels.map(l => Math.abs(catMap[l]));
+        } else {
+            // Bar chart po mesiacoch alebo dátumoch
+            const monthNames = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
+            const monthlySums = new Array(12).fill(0);
+
+            filtered.forEach(item => {
+                const cleanD = getCleanDateStr(item.date);
+                const parts = cleanD.split('-');
+                if (parts.length === 3) {
+                    const m = parseInt(parts[1]) - 1;
+                    const amt = parseFloat(item.amount);
+                    if (item.type === 'expense') totalExp += amt;
+                    if (item.type === 'income') totalInc += amt;
+
+                    if (dataMode === 'expense' && item.type === 'expense') monthlySums[m] += amt;
+                    else if (dataMode === 'income' && item.type === 'income') monthlySums[m] += amt;
+                    else if (dataMode === 'balance') monthlySums[m] += (item.type === 'income' ? amt : -amt);
+                }
+            });
+
+            labels = monthNames.filter((_, i) => selectedMonths.length === 0 || selectedMonths.includes(i));
+            datasetData = monthlySums.filter((_, i) => selectedMonths.length === 0 || selectedMonths.includes(i));
+        }
+
+        // Vykreslenie/Update Chart.js
+        const ctx = document.getElementById('analyticsChart').getContext('2d');
+        if (analyticsChartInstance) { analyticsChartInstance.destroy(); }
+
+        analyticsChartInstance = new Chart(ctx, {
+            type: chartType,
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: datasetData,
+                    backgroundColor: backgroundColors,
+                    borderWidth: 0,
+                    borderRadius: chartType === 'bar' ? 6 : 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: chartType === 'doughnut',
+                        position: 'bottom',
+                        labels: { color: textColor, font: { family: 'Plus Jakarta Sans', size: 10, weight: '700' }, boxWidth: 12 }
+                    }
+                },
+                scales: chartType === 'bar' ? {
+                    x: { ticks: { color: textColor, font: { size: 9, weight: '700' } }, grid: { display: false } },
+                    y: { ticks: { color: textColor, font: { size: 9 } }, grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' } }
+                } : {}
+            }
+        });
+
+        // Aktualizácia sumárneho modulu pod grafom
+        const statsContainer = document.getElementById('chart-stats-summary');
+        statsContainer.innerHTML = `
+            <div class="bg-slate-100 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200/50 dark:border-slate-800">
+                <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider">Celkové Výdavky</span>
+                <div class="text-sm font-extrabold text-slate-700 dark:text-slate-200">${totalExp.toFixed(2)} €</div>
+            </div>
+            <div class="bg-slate-100 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200/50 dark:border-slate-800">
+                <span class="text-[8px] font-black uppercase text-slate-400 tracking-wider">Celkové Príjmy</span>
+                <div class="text-sm font-extrabold text-emerald-500">${totalInc.toFixed(2)} €</div>
+            </div>
+        `;
+    }
+
+    function saveCurrentPreset() {
+        const name = prompt("Názov pre nový náhľad grafu:", "Môj pohľad");
+        if (!name) return;
+
+        const preset = {
+            id: 'p-' + Date.now(),
+            name: name,
+            chartType: document.getElementById('chart-type').value,
+            dataMode: document.getElementById('chart-data-mode').value,
+            userFilter: document.getElementById('chart-user-filter').value
+        };
+
+        chartPresets.push(preset);
+        localStorage.setItem('f_chart_presets_v20', JSON.stringify(chartPresets));
+        renderPresets();
+    }
+
+    function applyPreset(id) {
+        const p = chartPresets.find(x => x.id === id);
+        if (!p) return;
+
+        document.getElementById('chart-type').value = p.chartType;
+        document.getElementById('chart-data-mode').value = p.dataMode;
+        document.getElementById('chart-user-filter').value = p.userFilter;
+        updateAnalytics();
+    }
+
+    function deletePreset(id, e) {
+        e.stopPropagation();
+        chartPresets = chartPresets.filter(x => x.id !== id);
+        localStorage.setItem('f_chart_presets_v20', JSON.stringify(chartPresets));
+        renderPresets();
+    }
+
+    function renderPresets() {
+        const container = document.getElementById('presets-container');
+        if (chartPresets.length === 0) {
+            container.innerHTML = `<span class="text-[9px] text-slate-400 font-extrabold uppercase px-1">Žiadne uložené náhľady</span>`;
+            return;
+        }
+
+        container.innerHTML = chartPresets.map(p => `
+            <div onclick="applyPreset('${p.id}')" class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-[9px] font-extrabold uppercase cursor-pointer shrink-0">
+                <span>${p.name}</span>
+                <button type="button" onclick="deletePreset('${p.id}', event)" class="text-slate-400 hover:text-red-400"><i data-lucide="x" class="w-3 h-3"></i></button>
+            </div>
+        `).join('');
+        lucide.createIcons();
+    }
+
+    /* --- SWIPE GESTÁ --- */
     let swipeStartX = 0;
     let swipeStartY = 0;
     let swipeCurrentX = 0;
@@ -779,7 +1033,7 @@
 
             if (content && bg) {
                 content.style.transform = `translateX(${diffX}px)`;
-                bg.style.opacity = '1'; // Pozadie zviditeľníme len pri aktívnom swipe
+                bg.style.opacity = '1';
 
                 if (diffX > 0) {
                     bg.style.backgroundColor = 'rgba(16, 185, 129, 0.9)';
@@ -799,7 +1053,7 @@
             content.style.transform = '';
         }
         if(bg) {
-            bg.style.opacity = '0'; // Opäť skryjeme pozadie po ukončení gesta
+            bg.style.opacity = '0';
         }
 
         const threshold = 75;
@@ -893,6 +1147,7 @@
             syncQueue.push({ ...updatedEntry, action: 'save' }); 
             saveData(false); 
             renderList(); 
+            updateAnalytics();
             processSyncQueue();
         }
     }
