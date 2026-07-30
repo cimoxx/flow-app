@@ -13,7 +13,7 @@
     <!-- Knižnica pre grafy -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght=600;700;800&family=Plus+Jakarta+Sans:wght=400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         
         :root {
             --bg-main: #f8fafc;
@@ -93,7 +93,7 @@
         .cat-tile i { width: 14px; height: 14px; margin-bottom: 2px; }
         .cat-tile span { font-size: 7.5px; line-height: 1; text-align: center; font-weight: 800; padding: 0 2px; text-transform: uppercase; letter-spacing: 0.02em; }
 
-        .sub-chip { transition: all 0.2s; cursor: pointer; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); font-size: 9px; border-radius: 10px; font-weight: 700; }
+        .sub-chip { transition: all 0.2s; cursor: pointer; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-dim); font-size: 9px; border-radius: 10px; font-weight: 700; padding: 6px 10px; }
         .sub-chip.active { background-color: var(--accent); color: #0b0f1a; border-color: var(--accent); }
         
         .glass-nav { background: var(--bg-card); border-top: 1px solid var(--border); }
@@ -190,6 +190,7 @@
             </div>
         </div>
         <div id="category-summary" class="flex flex-col gap-0"></div>
+        <div id="subcategories-summary" class="flex flex-wrap gap-1.5 mt-2"></div>
     </header>
 
     <!-- HLAVNÁ OBRAZOVKA (TRANSAKCIE) -->
@@ -413,7 +414,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.14.0</h3>
+                <h3 class="text-xl font-extrabold">v2.15.0</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -423,47 +424,21 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.14.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.15.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Pridaná podpora pre filtrovanie transakcií podľa podkategórií priamo v prehľade.</li>
+                    <li>Doplnený dynamický súhrn podkategórií na základe vybratého quickfiltra kategórie.</li>
+                </ul>
+            </div>
+            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.14.0</span>
+                </div>
+                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
                     <li>Optimalizovaný vizuálny UX/UI dizajn pre sekciu Grafy a Burn Rate.</li>
                     <li>Pridané intuitívne vizuálne zobrazenie podielu výdavkov prostredníctvom progress barov.</li>
-                    <li>Vylepšená čitateľnosť štatistických kárt, prispôsobenie tmavej a svetlej téme.</li>
-                </ul>
-            </div>
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.13.2</span>
-                </div>
-                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
-                    <li>Opravený výber a vycentrovanie aktuálneho mesiaca vo filtri pri načítaní aplikácie.</li>
-                </ul>
-            </div>
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.13.1</span>
-                </div>
-                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
-                    <li>Optimalizovaný prah citlivosti dotyku (max 8px posunu) zabraňujúci neúmyselnému otváraniu okna editácie pri scrollovaní.</li>
-                </ul>
-            </div>
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.13.0</span>
-                </div>
-                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridané priame editovanie transakcie po kliknutí na položku v prehľade.</li>
-                    <li>Vylepšená citlivosť gest pri scrollovaní pre zabránenie nechcenému otváraniu editácie.</li>
-                </ul>
-            </div>
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.12.0</span>
-                </div>
-                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
-                    <li>Vytvorená samostatná hlavná záložka pre <b>Burn Rate</b> v spodnej navigácii.</li>
-                    <li>Pridané možnosti filtrovania obdobia, mesiacov, úrovne dát, osoby a typov grafov pre Burn Rate.</li>
                 </ul>
             </div>
         </div>
@@ -1199,11 +1174,57 @@
         container.innerHTML = html;
     }
 
+    function renderSubcategoriesSummary(currentFiltered) {
+        const subContainer = document.getElementById('subcategories-summary');
+        if (!subContainer) return;
+
+        if (!activeCategoryFilter) {
+            subContainer.innerHTML = '';
+            return;
+        }
+
+        const subSums = {};
+        currentFiltered.forEach(item => {
+            if (item.category === activeCategoryFilter && item.type === 'expense' && item.sub) {
+                subSums[item.sub] = (subSums[item.sub] || 0) + parseFloat(item.amount);
+            }
+        });
+
+        const subKeys = Object.keys(subSums);
+        if (subKeys.length === 0) {
+            subContainer.innerHTML = '';
+            return;
+        }
+
+        let html = '<div class="flex gap-1.5 overflow-x-auto no-scrollbar py-1">';
+        subKeys.forEach(s => {
+            const isActive = window.activeSubFilter === s;
+            html += `
+                <button type="button" onclick="toggleSubFilter('${s}')" class="sub-chip px-2.5 py-1.5 rounded-xl text-[9px] font-extrabold uppercase shrink-0 ${isActive ? 'active' : ''}">
+                    ${s} (${subSums[s].toFixed(2)} €)
+                </button>
+            `;
+        });
+        html += '</div>';
+        subContainer.innerHTML = html;
+    }
+
     function toggleFilter(cat) {
         if (activeCategoryFilter === cat) {
             activeCategoryFilter = null;
+            window.activeSubFilter = null;
         } else {
             activeCategoryFilter = cat;
+            window.activeSubFilter = null;
+        }
+        renderList();
+    }
+
+    function toggleSubFilter(sub) {
+        if (window.activeSubFilter === sub) {
+            window.activeSubFilter = null;
+        } else {
+            window.activeSubFilter = sub;
         }
         renderList();
     }
@@ -1220,12 +1241,11 @@
         currentFiltered.forEach(item => { 
             if (item.type === 'expense') {
                 if (!sums[item.category]) sums[item.category] = 0;
-                if (!window.activeSubFilter || item.sub === window.activeSubFilter) {
-                    sums[item.category] += item.amount; 
-                }
+                sums[item.category] += item.amount; 
             }
         });
         renderSummary(sums, currentFiltered);
+        renderSubcategoriesSummary(currentFiltered);
 
         if (activeCategoryFilter) {
             currentFiltered = currentFiltered.filter(d => d.category === activeCategoryFilter);
@@ -1236,7 +1256,7 @@
 
         updateTotals(currentFiltered);
 
-        document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter);
+        document.getElementById('clear-cat-filter').classList.toggle('hidden', !activeCategoryFilter && !window.activeSubFilter);
         
         const sortedItems = [...currentFiltered].sort((a, b) => {
             const dateA = getCleanDateStr(a.date);
