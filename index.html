@@ -413,7 +413,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.13.1</h3>
+                <h3 class="text-xl font-extrabold">v2.13.2</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -423,10 +423,18 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.13.1</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.13.2</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Opravený výber a vycentrovanie aktuálneho mesiaca vo filtri pri načítaní aplikácie.</li>
+                </ul>
+            </div>
+            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.13.1</span>
+                </div>
+                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
                     <li>Optimalizovaný prah citlivosti dotyku (max 8px posunu) zabraňujúci neúmyselnému otváraniu okna editácie pri scrollovaní.</li>
                 </ul>
             </div>
@@ -1086,13 +1094,19 @@
             const isActive = selectedMonths.includes(i);
             return `<button type="button" id="m-chip-${i}" onclick="toggleMonthSelect(${i})" class="month-chip ${isActive ? 'active' : ''}">${m}</button>`;
         }).join('');
+        
+        if (selectedMonths.length > 0) {
+            scrollToActiveMonth(selectedMonths[0]);
+        }
     }
 
     function scrollToActiveMonth(monthIdx) {
-        const activeChip = document.getElementById(`m-chip-${monthIdx}`);
-        if (activeChip) {
-            activeChip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-        }
+        setTimeout(() => {
+            const activeChip = document.getElementById(`m-chip-${monthIdx}`);
+            if (activeChip) {
+                activeChip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        }, 50);
     }
 
     function toggleChartMonthSelect(monthIdx) {
@@ -1491,27 +1505,15 @@
             datasetData = sortedKeys.map(k => Math.abs(aggregatedMap[k]));
         } else {
             const monthNames = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
-            const monthlySums = new Array(12).fill(0);
-
-            filtered.forEach(item => {
-                const cleanD = getCleanDateStr(item.date);
-                const parts = cleanD.split('-');
-                if (parts.length === 3) {
-                    const m = parseInt(parts[1]) - 1;
-                    const amt = parseFloat(item.amount);
-
-                    if (dataMode === 'expense' && item.type === 'expense') monthlySums[m] += amt;
-                    else if (dataMode === 'income' && item.type === 'income') monthlySums[m] += amt;
-                    else if (dataMode === 'balance') monthlySums[m] += (item.type === 'income' ? amt : -amt);
-                }
-            });
-
-            labels = monthNames;
-            datasetData = monthlySums;
+            const sortedKeys = Object.keys(aggregatedMap).sort((a,b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]));
+            labels = sortedKeys;
+            datasetData = sortedKeys.map(k => aggregatedMap[k]);
         }
 
         const ctx = document.getElementById('analyticsChart').getContext('2d');
-        if (analyticsChartInstance) { analyticsChartInstance.destroy(); }
+        if (analyticsChartInstance) {
+            analyticsChartInstance.destroy();
+        }
 
         analyticsChartInstance = new Chart(ctx, {
             type: chartType,
@@ -1519,9 +1521,8 @@
                 labels: labels,
                 datasets: [{
                     data: datasetData,
-                    backgroundColor: backgroundColors,
-                    borderWidth: 0,
-                    borderRadius: chartType === 'bar' ? 6 : 0
+                    backgroundColor: backgroundColors.slice(0, labels.length),
+                    borderWidth: 1
                 }]
             },
             options: {
@@ -1531,69 +1532,36 @@
                     legend: {
                         display: chartType === 'doughnut',
                         position: 'bottom',
-                        labels: { color: textColor, font: { family: 'Plus Jakarta Sans', size: 9, weight: '700' }, boxWidth: 10 }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const val = context.parsed || context.raw || 0;
-                                const pct = totalSelectedModeSum > 0 ? ((val / totalSelectedModeSum) * 100).toFixed(1) : '0.0';
-                                return ` ${val.toFixed(2)} € (${pct}%)`;
-                            }
-                        }
+                        labels: { color: textColor, font: { size: 10, weight: 'bold' } }
                     }
                 },
                 scales: chartType === 'bar' ? {
-                    x: { ticks: { color: textColor, font: { size: 9, weight: '700' } }, grid: { display: false } },
-                    y: { ticks: { color: textColor, font: { size: 9 } }, grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' } }
+                    y: { ticks: { color: textColor }, grid: { color: isDark ? '#242f48' : '#e2e8f0' } },
+                    x: { ticks: { color: textColor }, grid: { display: false } }
                 } : {}
             }
         });
 
+        // Sumár
         const statsContainer = document.getElementById('chart-stats-summary');
-        
-        let breakdownHtml = '';
-        if (chartType === 'doughnut' && Object.keys(aggregatedMap).length > 0) {
-            const sortedKeys = Object.keys(aggregatedMap).sort((a,b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]));
-            breakdownHtml = `
-                <div class="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2">
-                    <span class="text-[9px] font-black uppercase text-slate-400 tracking-wider">Rozpad podľa položiek</span>
-                    <div class="space-y-1.5">
-                        ${sortedKeys.map((k, idx) => {
-                            const val = Math.abs(aggregatedMap[k]);
-                            const pct = totalSelectedModeSum > 0 ? ((val / totalSelectedModeSum) * 100).toFixed(1) : '0.0';
-                            const color = backgroundColors[idx % backgroundColors.length];
-                            return `
-                                <div class="flex items-center justify-between text-xs">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${color}"></div>
-                                        <span class="font-bold truncate max-w-[180px]">${k}</span>
-                                    </div>
-                                    <div class="flex items-center gap-2 font-extrabold">
-                                        <span>${val.toFixed(2)} €</span>
-                                        <span class="text-[10px] text-slate-400 min-w-[36px] text-right">${pct}%</span>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
+        let statsHtml = `
+            <div class="grid grid-cols-3 gap-2 text-center bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div>
+                    <span class="block text-[8px] font-black text-slate-400 uppercase">Príjmy</span>
+                    <span class="text-xs font-extrabold text-emerald-500">+${totalInc.toFixed(2)} €</span>
                 </div>
-            `;
-        }
-
-        statsContainer.innerHTML = `
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20">
-                    <span class="text-[8px] font-black uppercase text-emerald-500 tracking-wider">Celkové Príjmy</span>
-                    <div class="text-base font-extrabold text-emerald-500">${totalInc.toFixed(2)} €</div>
+                <div>
+                    <span class="block text-[8px] font-black text-slate-400 uppercase">Výdavky</span>
+                    <span class="text-xs font-extrabold text-rose-500">-${totalExp.toFixed(2)} €</span>
                 </div>
-                <div class="bg-rose-500/10 p-3 rounded-2xl border border-rose-500/20">
-                    <span class="text-[8px] font-black uppercase text-rose-500 tracking-wider">Celkové Výdavky</span>
-                    <div class="text-base font-extrabold text-rose-500">${totalExp.toFixed(2)} €</div>
+                <div>
+                    <span class="block text-[8px] font-black text-slate-400 uppercase">Bilancia</span>
+                    <span class="text-xs font-extrabold ${totalInc - totalExp >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${(totalInc - totalExp).toFixed(2)} €</span>
                 </div>
             </div>
-            ${breakdownHtml}
         `;
+
+        statsContainer.innerHTML = statsHtml;
     }
 
     function updateBurnRateTab() {
@@ -1611,14 +1579,14 @@
         }
 
         const daysCount = getDaysCountForPeriod(filtered);
-        let totalExpenses = 0, totalIncome = 0;
 
+        let totalExp = 0, totalInc = 0;
         const aggregatedMap = {};
 
         filtered.forEach(item => {
             const amt = parseFloat(item.amount);
-            if (item.type === 'expense') totalExpenses += amt;
-            if (item.type === 'income') totalIncome += amt;
+            if (item.type === 'expense') totalExp += amt;
+            if (item.type === 'income') totalInc += amt;
 
             let key = item.category;
             if (levelMode === 'sub') {
@@ -1635,61 +1603,51 @@
             }
         });
 
-        const dailyBurnRate = daysCount > 0 ? (totalExpenses / daysCount) : 0;
+        const dailyBurnRate = totalExp / daysCount;
         const monthlyBurnRate = dailyBurnRate * 30.5;
 
+        // Karty pre Burn Rate
         const cardsContainer = document.getElementById('burn-metrics-cards');
         cardsContainer.innerHTML = `
-            <div class="bg-amber-500/10 p-3.5 rounded-2xl border border-amber-500/20 space-y-1">
-                <span class="text-[8px] font-black uppercase text-amber-500 tracking-wider">Denné Čerpanie</span>
-                <div class="text-lg font-extrabold text-amber-500">${dailyBurnRate.toFixed(2)} € / deň</div>
-                <div class="text-[9px] text-amber-500/80 font-bold">Na základe ${daysCount.toFixed(0)} dní</div>
+            <div class="bg-white dark:bg-slate-800/80 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                <div class="flex items-center gap-1.5 mb-1">
+                    <i data-lucide="flame" class="w-3.5 h-3.5 text-amber-500"></i>
+                    <span class="text-[8px] font-black text-slate-400 uppercase tracking-wider">Denné čerpanie</span>
+                </div>
+                <div class="text-lg font-extrabold text-amber-500">${dailyBurnRate.toFixed(2)} € <span class="text-[9px] font-bold text-slate-400">/ deň</span></div>
             </div>
-            <div class="bg-rose-500/10 p-3.5 rounded-2xl border border-rose-500/20 space-y-1">
-                <span class="text-[8px] font-black uppercase text-rose-500 tracking-wider">Mesačný Odhad (Burn)</span>
-                <div class="text-lg font-extrabold text-rose-500">${monthlyBurnRate.toFixed(2)} € / mes</div>
-                <div class="text-[9px] text-rose-500/80 font-bold">Prepočítané na 30.5 dňa</div>
+            <div class="bg-white dark:bg-slate-800/80 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                <div class="flex items-center gap-1.5 mb-1">
+                    <i data-lucide="trending-up" class="w-3.5 h-3.5 text-rose-500"></i>
+                    <span class="text-[8px] font-black text-slate-400 uppercase tracking-wider">Mesačný odhad</span>
+                </div>
+                <div class="text-lg font-extrabold text-rose-500">${monthlyBurnRate.toFixed(2)} € <span class="text-[9px] font-bold text-slate-400">/ mes.</span></div>
             </div>
         `;
 
         const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         const textColor = isDark ? '#94a3b8' : '#64748b';
 
-        let labels = [];
-        let datasetData = [];
-        let backgroundColors = [
-            '#f59e0b', '#ec4899', '#3b82f6', '#10b981', '#8b5cf6', 
-            '#f97316', '#06b6d4', '#64748b', '#84cc16', '#a855f7'
-        ];
-
         const sortedKeys = Object.keys(aggregatedMap).sort((a,b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]));
-
-        if (chartType === 'doughnut') {
-            const totalSum = Object.values(aggregatedMap).reduce((a,b) => a + Math.abs(b), 0);
-            labels = sortedKeys.map(k => {
-                const val = Math.abs(aggregatedMap[k]);
-                const pct = totalSum > 0 ? ((val / totalSum) * 100).toFixed(1) : '0.0';
-                return `${k} (${pct}%)`;
-            });
-            datasetData = sortedKeys.map(k => Math.abs(aggregatedMap[k]));
-        } else {
-            labels = sortedKeys;
-            datasetData = sortedKeys.map(k => (aggregatedMap[k] / daysCount));
-        }
+        const labels = sortedKeys;
+        const datasetData = sortedKeys.map(k => aggregatedMap[k]);
 
         const ctx = document.getElementById('burnRateTabChart').getContext('2d');
-        if (burnRateTabChartInstance) { burnRateTabChartInstance.destroy(); }
+        if (burnRateTabChartInstance) {
+            burnRateTabChartInstance.destroy();
+        }
 
         burnRateTabChartInstance = new Chart(ctx, {
             type: chartType,
             data: {
                 labels: labels,
                 datasets: [{
-                    label: chartType === 'bar' ? 'Čerpanie (€ / deň)' : 'Suma',
                     data: datasetData,
-                    backgroundColor: backgroundColors,
-                    borderWidth: 0,
-                    borderRadius: chartType === 'bar' ? 6 : 0
+                    backgroundColor: [
+                        '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#3b82f6',
+                        '#10b981', '#06b6d4', '#f97316', '#64748b', '#84cc16'
+                    ],
+                    borderWidth: 1
                 }]
             },
             options: {
@@ -1699,82 +1657,64 @@
                     legend: {
                         display: chartType === 'doughnut',
                         position: 'bottom',
-                        labels: { color: textColor, font: { family: 'Plus Jakarta Sans', size: 9, weight: '700' }, boxWidth: 10 }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const val = context.parsed || context.raw || 0;
-                                return chartType === 'bar' ? ` ${val.toFixed(2)} € / deň` : ` ${val.toFixed(2)} €`;
-                            }
-                        }
+                        labels: { color: textColor, font: { size: 10, weight: 'bold' } }
                     }
                 },
                 scales: chartType === 'bar' ? {
-                    x: { ticks: { color: textColor, font: { size: 9, weight: '700' } }, grid: { display: false } },
-                    y: { ticks: { color: textColor, font: { size: 9 } }, grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' } }
+                    y: { ticks: { color: textColor }, grid: { color: isDark ? '#242f48' : '#e2e8f0' } },
+                    x: { ticks: { color: textColor }, grid: { display: false } }
                 } : {}
             }
         });
 
+        // Rozpad čerpania
         const breakdownContainer = document.getElementById('burn-stats-breakdown');
-        const totalSelectedSum = Object.values(aggregatedMap).reduce((a, b) => a + Math.abs(b), 0);
+        let breakdownHtml = `<div class="space-y-2">`;
+        const totalSum = Object.values(aggregatedMap).reduce((a, b) => a + Math.abs(b), 0);
 
-        if (sortedKeys.length === 0) {
-            breakdownContainer.innerHTML = `<div class="text-center py-4 text-slate-400 text-xs font-bold">Žiadne dáta pre vybrané obdobie</div>`;
-            return;
+        sortedKeys.forEach(k => {
+            const val = aggregatedMap[k];
+            const pct = totalSum > 0 ? ((Math.abs(val) / totalSum) * 100).toFixed(1) : '0.0';
+            const dailyCatBurn = Math.abs(val) / daysCount;
+
+            breakdownHtml += `
+                <div class="bg-white dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                    <div>
+                        <span class="font-extrabold block text-slate-700 dark:text-slate-200">${k}</span>
+                        <span class="text-[9px] font-bold text-slate-400">${dailyCatBurn.toFixed(2)} € / deň</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-extrabold block">${val.toFixed(2)} €</span>
+                        <span class="text-[9px] font-bold text-amber-500">${pct}%</span>
+                    </div>
+                </div>
+            `;
+        });
+        breakdownHtml += `</div>`;
+        breakdownContainer.innerHTML = breakdownHtml;
+
+        lucide.createIcons();
+    }
+
+    // Inicializácia pri načítaní
+    window.addEventListener('DOMContentLoaded', () => {
+        const yearSelect = document.getElementById('filter-year');
+        const curYear = new Date().getFullYear();
+        for (let y = curYear - 2; y <= curYear + 2; y++) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.innerText = y;
+            if (y === curYear) opt.selected = true;
+            yearSelect.appendChild(opt);
         }
 
-        breakdownContainer.innerHTML = `
-            <div class="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2.5">
-                <div class="flex justify-between items-center">
-                    <span class="text-[9px] font-black uppercase text-amber-500 tracking-wider">Rozpad denne & mesačne</span>
-                    <span class="text-[9px] font-bold text-slate-400">Priemer za ${daysCount.toFixed(0)} dní</span>
-                </div>
-                <div class="space-y-2">
-                    ${sortedKeys.map((k, idx) => {
-                        const totalVal = Math.abs(aggregatedMap[k]);
-                        const dailyVal = totalVal / daysCount;
-                        const monthlyVal = dailyVal * 30.5;
-                        const pct = totalSelectedSum > 0 ? ((totalVal / totalSelectedSum) * 100).toFixed(1) : '0.0';
-                        const color = backgroundColors[idx % backgroundColors.length];
-
-                        return `
-                            <div class="space-y-1 bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
-                                <div class="flex items-center justify-between text-xs">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${color}"></div>
-                                        <span class="font-bold truncate max-w-[160px]">${k}</span>
-                                    </div>
-                                    <span class="font-extrabold text-amber-500">${dailyVal.toFixed(2)} € / deň</span>
-                                </div>
-                                <div class="flex justify-between items-center text-[10px] text-slate-400 font-semibold pl-4">
-                                    <span>Mesačne: ~${monthlyVal.toFixed(2)} €</span>
-                                    <span>Spolu: ${totalVal.toFixed(2)} € (${pct}%)</span>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
-        `;
-    }
-
-    /* INICIALIZÁCIA ROKA */
-    const yearSelect = document.getElementById('filter-year');
-    const currentYear = new Date().getFullYear();
-    for (let y = currentYear + 1; y >= currentYear - 3; y--) {
-        const opt = document.createElement('option');
-        opt.value = y;
-        opt.innerText = y;
-        if (y === currentYear) opt.selected = true;
-        yearSelect.appendChild(opt);
-    }
-
-    renderMonthChips();
-    renderCatGrid();
-    renderList();
-    renderPresets();
+        renderMonthChips();
+        renderChartMonthChips();
+        renderCatGrid();
+        renderList();
+        
+        showScreen('home');
+    });
 </script>
 </body>
 </html>
