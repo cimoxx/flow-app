@@ -413,7 +413,7 @@
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
                 <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.13.2</h3>
+                <h3 class="text-xl font-extrabold">v2.14.0</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -423,10 +423,20 @@
         <div class="space-y-4">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.13.2</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.14.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Optimalizovaný vizuálny UX/UI dizajn pre sekciu Grafy a Burn Rate.</li>
+                    <li>Pridané intuitívne vizuálne zobrazenie podielu výdavkov prostredníctvom progress barov.</li>
+                    <li>Vylepšená čitateľnosť štatistických kárt, prispôsobenie tmavej a svetlej téme.</li>
+                </ul>
+            </div>
+            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.13.2</span>
+                </div>
+                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
                     <li>Opravený výber a vycentrovanie aktuálneho mesiaca vo filtri pri načítaní aplikácie.</li>
                 </ul>
             </div>
@@ -1504,25 +1514,27 @@
             });
             datasetData = sortedKeys.map(k => Math.abs(aggregatedMap[k]));
         } else {
-            const monthNames = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
             const sortedKeys = Object.keys(aggregatedMap).sort((a,b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]));
             labels = sortedKeys;
             datasetData = sortedKeys.map(k => aggregatedMap[k]);
         }
 
-        const ctx = document.getElementById('analyticsChart').getContext('2d');
         if (analyticsChartInstance) {
             analyticsChartInstance.destroy();
         }
 
+        const ctx = document.getElementById('analyticsChart').getContext('2d');
         analyticsChartInstance = new Chart(ctx, {
             type: chartType,
             data: {
                 labels: labels,
                 datasets: [{
+                    label: dataMode === 'expense' ? 'Výdavky (€)' : (dataMode === 'income' ? 'Príjmy (€)' : 'Bilancia (€)'),
                     data: datasetData,
-                    backgroundColor: backgroundColors.slice(0, labels.length),
-                    borderWidth: 1
+                    backgroundColor: chartType === 'doughnut' ? backgroundColors : 'rgba(16, 185, 129, 0.85)',
+                    borderColor: chartType === 'doughnut' ? (isDark ? '#161d2f' : '#ffffff') : '#10b981',
+                    borderWidth: 2,
+                    borderRadius: chartType === 'bar' ? 8 : 0
                 }]
             },
             options: {
@@ -1532,36 +1544,75 @@
                     legend: {
                         display: chartType === 'doughnut',
                         position: 'bottom',
-                        labels: { color: textColor, font: { size: 10, weight: 'bold' } }
+                        labels: {
+                            color: textColor,
+                            font: { family: 'Plus Jakarta Sans', size: 10, weight: '700' },
+                            padding: 12,
+                            boxWidth: 10,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.raw.toFixed(2)} €`;
+                            }
+                        }
                     }
                 },
                 scales: chartType === 'bar' ? {
-                    y: { ticks: { color: textColor }, grid: { color: isDark ? '#242f48' : '#e2e8f0' } },
-                    x: { ticks: { color: textColor }, grid: { display: false } }
+                    x: { ticks: { color: textColor, font: { size: 9, weight: '700' } }, grid: { display: false } },
+                    y: { ticks: { color: textColor, font: { size: 9 } }, grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' } }
                 } : {}
             }
         });
 
-        // Sumár
-        const statsContainer = document.getElementById('chart-stats-summary');
-        let statsHtml = `
-            <div class="grid grid-cols-3 gap-2 text-center bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <div>
-                    <span class="block text-[8px] font-black text-slate-400 uppercase">Príjmy</span>
-                    <span class="text-xs font-extrabold text-emerald-500">+${totalInc.toFixed(2)} €</span>
+        // UX & UI pre sumárne štatistiky s prehľadnými kartami a progress barmi
+        const summaryContainer = document.getElementById('chart-stats-summary');
+        const netBalance = totalInc - totalExp;
+
+        let breakdownHtml = Object.keys(aggregatedMap)
+            .sort((a, b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]))
+            .map((k, idx) => {
+                const val = aggregatedMap[k];
+                const pct = totalSelectedModeSum > 0 ? ((Math.abs(val) / totalSelectedModeSum) * 100).toFixed(1) : '0.0';
+                const color = backgroundColors[idx % backgroundColors.length];
+                return `
+                <div class="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800/60 transition-all hover:border-slate-200 dark:hover:border-slate-700">
+                    <div class="flex justify-between items-center mb-1.5 text-xs">
+                        <span class="font-bold flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                            <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${color}"></span>
+                            <span class="truncate">${k}</span>
+                        </span>
+                        <span class="font-extrabold text-slate-900 dark:text-white">${val.toFixed(2)} € <span class="text-[10px] text-slate-400 font-semibold ml-1">(${pct}%)</span></span>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                        <div class="h-1.5 rounded-full transition-all duration-500" style="width: ${pct}%; background-color: ${color}"></div>
+                    </div>
+                </div>`;
+            }).join('');
+
+        summaryContainer.innerHTML = `
+            <div class="grid grid-cols-3 gap-2">
+                <div class="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-2xl text-center">
+                    <span class="block text-[8px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-0.5">Príjmy</span>
+                    <span class="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">${totalInc.toFixed(2)} €</span>
                 </div>
-                <div>
-                    <span class="block text-[8px] font-black text-slate-400 uppercase">Výdavky</span>
-                    <span class="text-xs font-extrabold text-rose-500">-${totalExp.toFixed(2)} €</span>
+                <div class="bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-2xl text-center">
+                    <span class="block text-[8px] font-black uppercase tracking-wider text-rose-500 mb-0.5">Výdavky</span>
+                    <span class="text-sm font-extrabold text-rose-500">${totalExp.toFixed(2)} €</span>
                 </div>
-                <div>
-                    <span class="block text-[8px] font-black text-slate-400 uppercase">Bilancia</span>
-                    <span class="text-xs font-extrabold ${totalInc - totalExp >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${(totalInc - totalExp).toFixed(2)} €</span>
+                <div class="${netBalance >= 0 ? 'bg-sky-500/10 border-sky-500/20 text-sky-600 dark:text-sky-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'} border p-2.5 rounded-2xl text-center">
+                    <span class="block text-[8px] font-black uppercase tracking-wider opacity-80 mb-0.5">Bilancia</span>
+                    <span class="text-sm font-extrabold">${netBalance >= 0 ? '+' : ''}${netBalance.toFixed(2)} €</span>
                 </div>
             </div>
-        `;
 
-        statsContainer.innerHTML = statsHtml;
+            <div class="space-y-2 pt-2">
+                <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Rozpad podľa položiek</h3>
+                ${breakdownHtml || '<div class="text-center py-4 text-xs text-slate-400 font-bold">Žiadne dáta pre vybrané filtre</div>'}
+            </div>
+        `;
     }
 
     function updateBurnRateTab() {
@@ -1603,51 +1654,72 @@
             }
         });
 
-        const dailyBurnRate = totalExp / daysCount;
+        const selectedTotalSum = Object.values(aggregatedMap).reduce((a, b) => a + Math.abs(b), 0);
+        const dailyBurnRate = daysCount > 0 ? (totalExp / daysCount) : 0;
         const monthlyBurnRate = dailyBurnRate * 30.5;
 
-        // Karty pre Burn Rate
-        const cardsContainer = document.getElementById('burn-metrics-cards');
-        cardsContainer.innerHTML = `
-            <div class="bg-white dark:bg-slate-800/80 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-                <div class="flex items-center gap-1.5 mb-1">
-                    <i data-lucide="flame" class="w-3.5 h-3.5 text-amber-500"></i>
-                    <span class="text-[8px] font-black text-slate-400 uppercase tracking-wider">Denné čerpanie</span>
+        // UI Karty metrík pre Burn Rate
+        const metricsContainer = document.getElementById('burn-metrics-cards');
+        metricsContainer.innerHTML = `
+            <div class="bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-2xl flex flex-col justify-between">
+                <div>
+                    <span class="block text-[8px] font-black uppercase tracking-widest text-amber-500 mb-0.5">Denné Čerpanie</span>
+                    <span class="text-xl font-extrabold text-amber-600 dark:text-amber-400">${dailyBurnRate.toFixed(2)} €</span>
                 </div>
-                <div class="text-lg font-extrabold text-amber-500">${dailyBurnRate.toFixed(2)} € <span class="text-[9px] font-bold text-slate-400">/ deň</span></div>
+                <span class="text-[9px] font-semibold text-slate-400 mt-1">Priemer na 1 deň</span>
             </div>
-            <div class="bg-white dark:bg-slate-800/80 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-                <div class="flex items-center gap-1.5 mb-1">
-                    <i data-lucide="trending-up" class="w-3.5 h-3.5 text-rose-500"></i>
-                    <span class="text-[8px] font-black text-slate-400 uppercase tracking-wider">Mesačný odhad</span>
+            <div class="bg-rose-500/10 border border-rose-500/20 p-3.5 rounded-2xl flex flex-col justify-between">
+                <div>
+                    <span class="block text-[8px] font-black uppercase tracking-widest text-rose-500 mb-0.5">Mesačné Čerpanie</span>
+                    <span class="text-xl font-extrabold text-rose-600 dark:text-rose-400">${monthlyBurnRate.toFixed(2)} €</span>
                 </div>
-                <div class="text-lg font-extrabold text-rose-500">${monthlyBurnRate.toFixed(2)} € <span class="text-[9px] font-bold text-slate-400">/ mes.</span></div>
+                <span class="text-[9px] font-semibold text-slate-400 mt-1">Odhad na 30.5 dní</span>
             </div>
         `;
 
         const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         const textColor = isDark ? '#94a3b8' : '#64748b';
 
-        const sortedKeys = Object.keys(aggregatedMap).sort((a,b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]));
-        const labels = sortedKeys;
-        const datasetData = sortedKeys.map(k => aggregatedMap[k]);
+        let labels = [];
+        let datasetData = [];
+        let backgroundColors = [
+            '#f59e0b', '#ec4899', '#ef4444', '#8b5cf6', '#3b82f6', 
+            '#10b981', '#06b6d4', '#f97316', '#64748b', '#84cc16'
+        ];
 
-        const ctx = document.getElementById('burnRateTabChart').getContext('2d');
+        const sortedKeys = Object.keys(aggregatedMap).sort((a,b) => Math.abs(aggregatedMap[b]) - Math.abs(aggregatedMap[a]));
+        
+        if (chartType === 'doughnut') {
+            labels = sortedKeys.map(k => {
+                const val = Math.abs(aggregatedMap[k]);
+                const pct = selectedTotalSum > 0 ? ((val / selectedTotalSum) * 100).toFixed(1) : '0.0';
+                return `${k} (${pct}%)`;
+            });
+            datasetData = sortedKeys.map(k => Math.abs(aggregatedMap[k]));
+        } else {
+            labels = sortedKeys;
+            datasetData = sortedKeys.map(k => {
+                const total = aggregatedMap[k];
+                return daysCount > 0 ? (total / daysCount) : 0;
+            });
+        }
+
         if (burnRateTabChartInstance) {
             burnRateTabChartInstance.destroy();
         }
 
+        const ctx = document.getElementById('burnRateTabChart').getContext('2d');
         burnRateTabChartInstance = new Chart(ctx, {
             type: chartType,
             data: {
                 labels: labels,
                 datasets: [{
+                    label: chartType === 'bar' ? 'Denný Burn Rate (€/deň)' : 'Čerpanie (€)',
                     data: datasetData,
-                    backgroundColor: [
-                        '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#3b82f6',
-                        '#10b981', '#06b6d4', '#f97316', '#64748b', '#84cc16'
-                    ],
-                    borderWidth: 1
+                    backgroundColor: chartType === 'doughnut' ? backgroundColors : 'rgba(245, 158, 11, 0.85)',
+                    borderColor: chartType === 'doughnut' ? (isDark ? '#161d2f' : '#ffffff') : '#f59e0b',
+                    borderWidth: 2,
+                    borderRadius: chartType === 'bar' ? 8 : 0
                 }]
             },
             options: {
@@ -1657,63 +1729,79 @@
                     legend: {
                         display: chartType === 'doughnut',
                         position: 'bottom',
-                        labels: { color: textColor, font: { size: 10, weight: 'bold' } }
+                        labels: {
+                            color: textColor,
+                            font: { family: 'Plus Jakarta Sans', size: 10, weight: '700' },
+                            padding: 12,
+                            boxWidth: 10,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const unit = chartType === 'bar' ? '€/deň' : '€';
+                                return ` ${context.raw.toFixed(2)} ${unit}`;
+                            }
+                        }
                     }
                 },
                 scales: chartType === 'bar' ? {
-                    y: { ticks: { color: textColor }, grid: { color: isDark ? '#242f48' : '#e2e8f0' } },
-                    x: { ticks: { color: textColor }, grid: { display: false } }
+                    x: { ticks: { color: textColor, font: { size: 9, weight: '700' } }, grid: { display: false } },
+                    y: { ticks: { color: textColor, font: { size: 9 } }, grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' } }
                 } : {}
             }
         });
 
-        // Rozpad čerpania
+        // UX & UI Rozpad čerpania s indikátormi
         const breakdownContainer = document.getElementById('burn-stats-breakdown');
-        let breakdownHtml = `<div class="space-y-2">`;
-        const totalSum = Object.values(aggregatedMap).reduce((a, b) => a + Math.abs(b), 0);
-
-        sortedKeys.forEach(k => {
+        let breakdownHtml = sortedKeys.map((k, idx) => {
             const val = aggregatedMap[k];
-            const pct = totalSum > 0 ? ((Math.abs(val) / totalSum) * 100).toFixed(1) : '0.0';
-            const dailyCatBurn = Math.abs(val) / daysCount;
+            const daily = daysCount > 0 ? (val / daysCount) : 0;
+            const pct = selectedTotalSum > 0 ? ((Math.abs(val) / selectedTotalSum) * 100).toFixed(1) : '0.0';
+            const color = backgroundColors[idx % backgroundColors.length];
 
-            breakdownHtml += `
-                <div class="bg-white dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                    <div>
-                        <span class="font-extrabold block text-slate-700 dark:text-slate-200">${k}</span>
-                        <span class="text-[9px] font-bold text-slate-400">${dailyCatBurn.toFixed(2)} € / deň</span>
-                    </div>
+            return `
+            <div class="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800/60 transition-all hover:border-slate-200 dark:hover:border-slate-700">
+                <div class="flex justify-between items-center mb-1 text-xs">
+                    <span class="font-bold flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${color}"></span>
+                        <span class="truncate">${k}</span>
+                    </span>
                     <div class="text-right">
-                        <span class="font-extrabold block">${val.toFixed(2)} €</span>
-                        <span class="text-[9px] font-bold text-amber-500">${pct}%</span>
+                        <span class="font-extrabold text-slate-900 dark:text-white block">${daily.toFixed(2)} €/deň</span>
+                        <span class="text-[9px] font-semibold text-slate-400">Spolu: ${val.toFixed(2)} € (${pct}%)</span>
                     </div>
                 </div>
-            `;
-        });
-        breakdownHtml += `</div>`;
-        breakdownContainer.innerHTML = breakdownHtml;
+                <div class="w-full bg-slate-200 dark:bg-slate-700/50 rounded-full h-1.5 overflow-hidden mt-1.5">
+                    <div class="h-1.5 rounded-full transition-all duration-500" style="width: ${pct}%; background-color: ${color}"></div>
+                </div>
+            </div>`;
+        }).join('');
 
-        lucide.createIcons();
+        breakdownContainer.innerHTML = `
+            <div class="space-y-2">
+                <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Čerpanie podľa položiek</h3>
+                ${breakdownHtml || '<div class="text-center py-4 text-xs text-slate-400 font-bold">Žiadne dáta pre vybrané filtre</div>'}
+            </div>
+        `;
     }
 
     // Inicializácia pri načítaní
     window.addEventListener('DOMContentLoaded', () => {
-        const yearSelect = document.getElementById('filter-year');
         const curYear = new Date().getFullYear();
-        for (let y = curYear - 2; y <= curYear + 2; y++) {
-            const opt = document.createElement('option');
-            opt.value = y;
-            opt.innerText = y;
-            if (y === curYear) opt.selected = true;
-            yearSelect.appendChild(opt);
+        const yearSelect = document.getElementById('filter-year');
+        if (yearSelect) {
+            yearSelect.innerHTML = `
+                <option value="${curYear}">${curYear}</option>
+                <option value="${curYear - 1}">${curYear - 1}</option>
+                <option value="${curYear - 2}">${curYear - 2}</option>
+            `;
         }
 
         renderMonthChips();
-        renderChartMonthChips();
         renderCatGrid();
         renderList();
-        
-        showScreen('home');
     });
 </script>
 </body>
