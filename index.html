@@ -345,8 +345,8 @@
             </div>
         </div>
 
-        <!-- Kartové zhrnutie pre Burn Rate -->
-        <div id="burn-metrics-cards" class="grid grid-cols-2 gap-3"></div>
+        <!-- Kartové zhrnutie pre Burn Rate vrátane DENNÉHO PRIEMERU -->
+        <div id="burn-metrics-cards" class="grid grid-cols-3 gap-2"></div>
 
         <!-- Hlavný Burn Rate Graf -->
         <div class="bg-white dark:bg-slate-800/80 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm relative min-h-[280px] flex items-center justify-center">
@@ -407,27 +407,48 @@
     </div>
 </div>
 
-<!-- CHANGELOG MODAL -->
+<!-- CHANGELOG MODAL (Posledné 3 záznamy) -->
 <div id="changelog-modal" class="fixed inset-0 bg-slate-900/90 z-[50] hidden backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4 max-h-[85vh] overflow-y-auto">
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
-                <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Verzia Aplikácie</span>
-                <h3 class="text-xl font-extrabold">v2.17.0</h3>
+                <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">História Zmien</span>
+                <h3 class="text-xl font-extrabold">Changelog</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
         
-        <div class="space-y-4">
-            <div>
+        <div class="space-y-4 text-xs">
+            <!-- Záznam 1 -->
+            <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div class="flex items-center gap-2 mb-1">
                     <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.17.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
-                <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridané filtrovanie transakcií po kliknutí na položku v tabuľke pod grafom alebo v Burn Rate analýze vrátane nastavenia správneho časového filtra.</li>
+                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Obnovenie zobrazenia denného priemeru v Burn Rate analýze.</li>
+                    <li>Pridané filtrovanie transakcií po kliknutí na položku v tabuľke pod grafom alebo v Burn Rate.</li>
+                </ul>
+            </div>
+            <!-- Záznam 2 -->
+            <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-extrabold text-[9px]">v2.16.0</span>
+                </div>
+                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Optimalizácia ukladania a správnej synchronizácie užívateľských predvolieb pre grafy.</li>
+                    <li>Vylepšenie dotykových gest (swipe) pri zobrazení zoznamu transakcií.</li>
+                </ul>
+            </div>
+            <!-- Záznam 3 -->
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-extrabold text-[9px]">v2.15.0</span>
+                </div>
+                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Rozšírenie analytických možností a samostatná záložka pre Burn Rate výpočty.</li>
                 </ul>
             </div>
         </div>
@@ -813,7 +834,6 @@
             const bg = document.getElementById(`bg-${id}`);
             if (!el || !bg) return;
 
-            // Obmedzenie posunu
             const translateX = Math.max(-120, Math.min(120, diffX));
             el.style.transform = `translateX(${translateX}px)`;
             bg.style.opacity = Math.min(1, Math.abs(translateX) / 40);
@@ -846,7 +866,6 @@
         el.style.transform = 'translateX(0px)';
         if (bg) bg.style.opacity = '0';
 
-        /* Výpočet celkového posunu prsta pri gestách */
         const touch = e.changedTouches ? e.changedTouches[0] : null;
         let totalDist = 0;
         if (touch) {
@@ -855,7 +874,6 @@
             totalDist = Math.sqrt(totalDiffX * totalDiffX + totalDiffY * totalDiffY);
         }
 
-        /* Editácia sa otvorí len vtedy, ak bol pohyb prsta menší ako 8px (skutočný klik/tap bez scrollovania) */
         if (!isSwiping && Math.abs(translateX) < 5 && totalDist < 8) {
             openModal(id);
         }
@@ -1172,12 +1190,10 @@
         renderList();
     }
     
-    // Nová funkcia pre filtrovanie z tabuliek a grafov so synchronizáciou času
     function filterFromStats(cat, sub = null) {
         activeCategoryFilter = cat;
         window.activeSubFilter = sub;
         
-        // Synchronizácia vybraného časového obdobia z grafov na hlavnú plochu
         if (selectedChartMonths && selectedChartMonths.length > 0) {
             selectedMonths = [...selectedChartMonths];
         } else {
@@ -1652,12 +1668,16 @@
         if (metricsContainer) {
             metricsContainer.innerHTML = `
                 <div class="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-center items-center">
-                    <span class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Denný Burn Rate</span>
-                    <span class="text-lg font-extrabold text-amber-500">${dailyBurn.toFixed(2)} €</span>
+                    <span class="text-[7.5px] font-black uppercase tracking-widest text-slate-400 mb-1 text-center">Denný priemer</span>
+                    <span class="text-sm font-extrabold text-amber-500">${dailyBurn.toFixed(2)} €</span>
                 </div>
                 <div class="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-center items-center">
-                    <span class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Mesačný Odhad</span>
-                    <span class="text-lg font-extrabold text-amber-500">${monthlyProjected.toFixed(2)} €</span>
+                    <span class="text-[7.5px] font-black uppercase tracking-widest text-slate-400 mb-1 text-center">Denný Burn</span>
+                    <span class="text-sm font-extrabold text-amber-500">${dailyBurn.toFixed(2)} €</span>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-center items-center">
+                    <span class="text-[7.5px] font-black uppercase tracking-widest text-slate-400 mb-1 text-center">Mesačný Odhad</span>
+                    <span class="text-sm font-extrabold text-amber-500">${monthlyProjected.toFixed(2)} €</span>
                 </div>
             `;
         }
@@ -1742,7 +1762,6 @@
         }
     }
 
-    // Inicializácia pri načítaní aplikácie
     const yearSelect = document.getElementById('filter-year');
     if (yearSelect) {
         const currentYear = new Date().getFullYear();
