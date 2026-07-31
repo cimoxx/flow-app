@@ -423,28 +423,11 @@
         <div class="space-y-4 text-xs">
             <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.19.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.18.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Rýchle filtre v prehľade transakcií sú zoradené zostupne podľa výšky sumy.</li>
-                    <li>Pridaná podpora pre filtrovanie transakcií aj podľa podkategórií priamo v rýchlych filtroch.</li>
-                </ul>
-            </div>
-            <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.18.0</span>
-                </div>
-                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
                     <li>Pridaný podrobný rozpad podkategórií priamo pod hlavnými kategóriami v Burn Rate analýze.</li>
-                </ul>
-            </div>
-            <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.17.0</span>
-                </div>
-                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Optimalizácia výkonu a vylepšenie správy predvolieb pre grafy.</li>
                 </ul>
             </div>
         </div>
@@ -1152,54 +1135,19 @@
     function renderSummary(sums, currentFiltered) {
         const container = document.getElementById('category-summary');
         if (!container) return;
-        
-        // Zostavenie zoznamu pre súhrnné dlaždice vrátane podkategórií
-        const filterItems = [];
-        Object.keys(sums).forEach(cat => {
-            // Hlavná kategória
-            filterItems.push({
-                type: 'cat',
-                name: cat,
-                key: cat,
-                amount: sums[cat].total
-            });
-            // Podkategórie danej kategórie
-            if (sums[cat].subs) {
-                Object.keys(sums[cat].subs).forEach(sub => {
-                    filterItems.push({
-                        type: 'sub',
-                        cat: cat,
-                        name: sub,
-                        key: cat + '|' + sub,
-                        amount: sums[cat].subs[sub]
-                    });
-                });
-            }
-        });
-
-        // Zoradenie zostupne podľa výšky sumy
-        filterItems.sort((a, b) => b.amount - a.amount);
-
-        if (filterItems.length === 0) {
+        const keys = Object.keys(sums);
+        if (keys.length === 0) {
             container.innerHTML = '';
             return;
         }
         
         let html = '<div class="flex gap-1.5 overflow-x-auto no-scrollbar py-1">';
-        filterItems.forEach(item => {
-            let isActive = false;
-            if (item.type === 'cat') {
-                isActive = activeCategoryFilter === item.cat && !window.activeSubFilter;
-            } else {
-                isActive = activeCategoryFilter === item.cat && window.activeSubFilter === item.name;
-            }
-
-            const displayName = item.type === 'sub' ? `<span class="text-[7px] text-slate-400 block">${item.cat}</span>${item.name}` : item.name;
-
+        keys.forEach(k => {
+            const isActive = activeCategoryFilter === k;
             html += `
-                <div onclick="toggleFilter('${item.cat}', ${item.type === 'sub' ? "'" + item.name + "'" : 'null'})" class="summary-card ${isActive ? 'active-filter' : ''} p-2 cursor-pointer flex flex-col justify-between shrink-0">
-                    <span class="text-[8px] font-black uppercase text-slate-400 truncate">${displayName}</span>
-                    <span class="text-xs font-extrabold">${item.amount.toFixed(2)} €</span>
+                <div onclick="toggleFilter('${k}')" class="summary-card ${isActive ? 'active-filter' : ''} p-2 cursor-pointer flex flex-col justify-between shrink-0">
+                    <span class="text-[8px] font-black uppercase text-slate-400 truncate">${k}</span>
+                    <span class="text-xs font-extrabold">${sums[k].toFixed(2)} €</span>
                 </div>
             `;
         });
@@ -1207,13 +1155,11 @@
         container.innerHTML = html;
     }
 
-    function toggleFilter(cat, sub = null) {
-        if (activeCategoryFilter === cat && window.activeSubFilter === sub) {
+    function toggleFilter(cat) {
+        if (activeCategoryFilter === cat) {
             activeCategoryFilter = null;
-            window.activeSubFilter = null;
         } else {
             activeCategoryFilter = cat;
-            window.activeSubFilter = sub;
         }
         renderList();
     }
@@ -1257,17 +1203,9 @@
         const sums = {}; 
         currentFiltered.forEach(item => { 
             if (item.type === 'expense') {
-                if (!sums[item.category]) {
-                    sums[item.category] = { total: 0, subs: {} };
-                }
-                sums[item.category].total += item.amount;
-
-                const subName = item.sub ? item.sub : null;
-                if (subName) {
-                    if (!sums[item.category].subs[subName]) {
-                        sums[item.category].subs[subName] = 0;
-                    }
-                    sums[item.category].subs[subName] += item.amount;
+                if (!sums[item.category]) sums[item.category] = 0;
+                if (!window.activeSubFilter || item.sub === window.activeSubFilter) {
+                    sums[item.category] += item.amount; 
                 }
             }
         });
@@ -1685,6 +1623,7 @@
             if (!aggregated[key]) aggregated[key] = 0;
             aggregated[key] += val;
 
+            // Zber hierarchických dát pre tabuľkový rozpad (kategórie -> podkategórie)
             if (!categoryBreakdown[item.category]) {
                 categoryBreakdown[item.category] = { total: 0, subs: {} };
             }
@@ -1770,6 +1709,7 @@
             }
         });
 
+        // Vykreslenie podrobnej tabuľky / rozpadu s podkategóriami priamo pod hlavnými kategóriami
         if (statsContainer && Object.keys(categoryBreakdown).length > 0) {
             let html = `<div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm">
                 <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -1786,6 +1726,7 @@
                 const catPct = totalAmount > 0 ? Math.round((catVal / totalAmount) * 100) : 0;
                 const color = backgroundColors[idx % backgroundColors.length];
 
+                // Hlavný riadok kategórie
                 html += `
                 <div class="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                     <div onclick="filterFromStats('${catName}')" class="flex justify-between items-center cursor-pointer mb-1.5">
@@ -1802,6 +1743,7 @@
                         <div class="h-full rounded-full" style="width: ${catPct}%; background-color: ${color}"></div>
                     </div>`;
 
+                // Podkategórie priamo pod kategóriou
                 const sortedSubs = Object.keys(catData.subs).sort((a,b) => Math.abs(catData.subs[b]) - Math.abs(catData.subs[a]));
                 if (sortedSubs.length > 0) {
                     html += `<div class="pl-5 space-y-1 mt-2 border-l-2 border-slate-100 dark:border-slate-700 ml-1.5">`;
