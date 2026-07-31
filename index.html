@@ -199,13 +199,24 @@
                 <div id="filter-months-container" class="flex-1 flex gap-1.5 overflow-x-auto no-scrollbar py-1"></div>
                 <select id="filter-year" onchange="renderList()" class="w-20 text-[11px] p-2 outline-none h-[32px]"></select>
             </div>
+            <!-- Dvojúrovňové filtrovanie -->
+            <div class="space-y-2 bg-slate-100/60 dark:bg-slate-800/30 p-2.5 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                <div class="flex items-center justify-between">
+                    <span class="text-[8px] font-black uppercase tracking-wider text-slate-400 px-1">Filtrovanie kategórií</span>
+                    <button id="clear-cat-filter" onclick="resetCategoryFilter()" class="hidden text-[10px] font-extrabold text-amber-500 uppercase tracking-wider">Zrušiť filter X</button>
+                </div>
+                <!-- 1. Úroveň: Hlavné kategórie -->
+                <div id="filter-main-cats" class="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5"></div>
+                <!-- 2. Úroveň: Podkategórie (zobrazí sa iba po vybratí konkrétnej hlavnej kategórie) -->
+                <div id="filter-sub-cats-container" class="hidden pt-1 border-t border-slate-200/50 dark:border-slate-700/50 flex gap-1.5 overflow-x-auto no-scrollbar py-0.5"></div>
+            </div>
+
             <div class="flex items-center justify-between px-1">
                 <div id="ui-toggle" class="toggle-container" onclick="toggleStatusFilter()">
                     <div class="toggle-slider"></div>
                     <div id="opt-unprocessed" class="toggle-option active">Nové</div>
                     <div id="opt-all" class="toggle-option">Všetky</div>
                 </div>
-                <button id="clear-cat-filter" onclick="resetCategoryFilter()" class="hidden text-[10px] font-extrabold text-amber-500 uppercase tracking-wider">Zrušiť filter X</button>
             </div>
         </div>
         <div id="transaction-list" class="space-y-4"></div>
@@ -423,11 +434,12 @@
         <div class="space-y-4 text-xs">
             <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.18.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.19.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridaný podrobný rozpad podkategórií priamo pod hlavnými kategóriami v Burn Rate analýze.</li>
+                    <li>Pridané dvojúrovňové filtrovanie v prehľade transakcií (hlavná kategória + podkategória zobrazená až po výbere hlavnej).</li>
+                    <li>Zabezpečené radenie transakcií a súhrnov vždy podľa sumy od najväčšej.</li>
                 </ul>
             </div>
         </div>
@@ -602,6 +614,7 @@
     function resetCategoryFilter() {
         activeCategoryFilter = null;
         window.activeSubFilter = null;
+        renderFilterCategories();
         renderList();
     }
 
@@ -1029,6 +1042,7 @@
             renderChartMonthChips();
             updateBurnRateTab();
         } else {
+            renderFilterCategories();
             renderList();
         }
     }
@@ -1036,7 +1050,7 @@
     async function syncCategories(action = 'push') {
         updateSyncUI('syncing');
         if (action === 'push') { try { await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'sync_categories', categories: categories }) }); } catch (e) { } }
-        else { try { const res = await fetch(GOOGLE_URL + "?get=categories"); const cloudData = await res.json(); if(Array.isArray(cloudData)) { categories = cloudData; localStorage.setItem('f_cats_v20', JSON.stringify(categories)); renderCatGrid(); if(!document.getElementById('settings-screen').classList.contains('hidden') && activeSettingsCat === null) renderManageCats(); } } catch (e) { } }
+        else { try { const res = await fetch(GOOGLE_URL + "?get=categories"); const cloudData = await res.json(); if(Array.isArray(cloudData)) { categories = cloudData; localStorage.setItem('f_cats_v20', JSON.stringify(categories)); renderCatGrid(); renderFilterCategories(); if(!document.getElementById('settings-screen').classList.contains('hidden') && activeSettingsCat === null) renderManageCats(); } } catch (e) { } }
         updateSyncUI('ok');
     }
 
@@ -1145,7 +1159,7 @@
         keys.forEach(k => {
             const isActive = activeCategoryFilter === k;
             html += `
-                <div onclick="toggleFilter('${k}')" class="summary-card ${isActive ? 'active-filter' : ''} p-2 cursor-pointer flex flex-col justify-between shrink-0">
+                <div onclick="filterFromStats('${k}')" class="summary-card ${isActive ? 'active-filter' : ''} p-2 cursor-pointer flex flex-col justify-between shrink-0">
                     <span class="text-[8px] font-black uppercase text-slate-400 truncate">${k}</span>
                     <span class="text-xs font-extrabold">${sums[k].toFixed(2)} €</span>
                 </div>
@@ -1155,18 +1169,60 @@
         container.innerHTML = html;
     }
 
-    function toggleFilter(cat) {
+    function renderFilterCategories() {
+        const mainContainer = document.getElementById('filter-main-cats');
+        const subContainer = document.getElementById('filter-sub-cats-container');
+        if (!mainContainer || !subContainer) return;
+
+        // Vykreslenie 1. úrovne (hlavné kategórie)
+        mainContainer.innerHTML = categories.map(c => {
+            const isActive = activeCategoryFilter === c.id;
+            return `<button type="button" onclick="selectFilterMainCat('${c.id}')" class="period-chip ${isActive ? 'active' : ''}">${c.id}</button>`;
+        }).join('');
+
+        // Vykreslenie 2. úrovne (podkategórie) iba ak je vybratá hlavná kategória
+        if (activeCategoryFilter) {
+            const catObj = categories.find(c => c.id === activeCategoryFilter);
+            if (catObj && catObj.subs && catObj.subs.length > 0) {
+                subContainer.classList.remove('hidden');
+                let subHtml = `<button type="button" onclick="selectFilterSubCat(null)" class="chart-month-chip ${!window.activeSubFilter ? 'active' : ''}">Všetky podkat.</button>`;
+                subHtml += catObj.subs.map(s => {
+                    const isSubActive = window.activeSubFilter === s;
+                    return `<button type="button" onclick="selectFilterSubCat('${s}')" class="chart-month-chip ${isSubActive ? 'active' : ''}">${s}</button>`;
+                }).join('');
+                subContainer.innerHTML = subHtml;
+            } else {
+                subContainer.classList.add('hidden');
+                subContainer.innerHTML = '';
+            }
+        } else {
+            subContainer.classList.add('hidden');
+            subContainer.innerHTML = '';
+        }
+    }
+
+    function selectFilterMainCat(cat) {
         if (activeCategoryFilter === cat) {
             activeCategoryFilter = null;
+            window.activeSubFilter = null;
         } else {
             activeCategoryFilter = cat;
+            window.activeSubFilter = null;
         }
+        renderFilterCategories();
         renderList();
     }
-    
+
+    function selectFilterSubCat(sub) {
+        window.activeSubFilter = sub;
+        renderFilterCategories();
+        renderList();
+    }
+
     function filterFromStats(cat, sub = null) {
         activeCategoryFilter = cat;
         window.activeSubFilter = sub;
+        renderFilterCategories();
         
         if (selectedChartMonths && selectedChartMonths.length > 0) {
             selectedMonths = [...selectedChartMonths];
@@ -1209,7 +1265,14 @@
                 }
             }
         });
-        renderSummary(sums, currentFiltered);
+
+        // Zoradenie súhrnov podľa sumy od najväčšej
+        const sortedSums = {};
+        Object.keys(sums).sort((a,b) => sums[b] - sums[a]).forEach(k => {
+            sortedSums[k] = sums[k];
+        });
+
+        renderSummary(sortedSums, currentFiltered);
 
         if (activeCategoryFilter) {
             currentFiltered = currentFiltered.filter(d => d.category === activeCategoryFilter);
@@ -1226,6 +1289,10 @@
             const dateA = getCleanDateStr(a.date);
             const dateB = getCleanDateStr(b.date);
             if (dateA !== dateB) return dateB.localeCompare(dateA);
+            // Zoradenie vždy podľa sumy od najväčšej v rámci rovnakého dňa/filtru
+            if (Math.abs(parseFloat(b.amount) - parseFloat(a.amount)) > 0.001) {
+                return parseFloat(b.amount) - parseFloat(a.amount);
+            }
             return String(b.id).localeCompare(String(a.id));
         });
 
@@ -1244,6 +1311,7 @@
         let html = '';
         Object.keys(grouped).forEach(dayKey => {
             const dayItems = grouped[dayKey];
+            // Transakcie v dni už sú zoradené podľa sumy od najväčšej v sortedItems
             const daySum = dayItems.reduce((acc, curr) => curr.type === 'income' ? acc + parseFloat(curr.amount) : acc - parseFloat(curr.amount), 0);
             
             html += `
@@ -1489,6 +1557,7 @@
         
         const labels = [];
         const dataVals = [];
+        // Zoradenie vždy podľa sumy od najväčšej
         const sortedKeys = Object.keys(aggregated).sort((a,b) => Math.abs(aggregated[b]) - Math.abs(aggregated[a]));
         
         sortedKeys.forEach(k => {
@@ -1623,7 +1692,6 @@
             if (!aggregated[key]) aggregated[key] = 0;
             aggregated[key] += val;
 
-            // Zber hierarchických dát pre tabuľkový rozpad (kategórie -> podkategórie)
             if (!categoryBreakdown[item.category]) {
                 categoryBreakdown[item.category] = { total: 0, subs: {} };
             }
@@ -1638,6 +1706,7 @@
         
         const labels = [];
         const dataVals = [];
+        // Zoradenie vždy podľa sumy od najväčšej
         const sortedKeys = Object.keys(aggregated).sort((a,b) => Math.abs(aggregated[b]) - Math.abs(aggregated[a]));
         
         sortedKeys.forEach(k => {
@@ -1709,7 +1778,6 @@
             }
         });
 
-        // Vykreslenie podrobnej tabuľky / rozpadu s podkategóriami priamo pod hlavnými kategóriami
         if (statsContainer && Object.keys(categoryBreakdown).length > 0) {
             let html = `<div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm">
                 <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -1718,6 +1786,7 @@
                 </div>
                 <div class="divide-y divide-slate-100 dark:divide-slate-700/50">`;
 
+            // Zoradenie kategórií v rozpade podľa sumy od najväčšej
             const sortedCats = Object.keys(categoryBreakdown).sort((a,b) => Math.abs(categoryBreakdown[b].total) - Math.abs(categoryBreakdown[a].total));
 
             sortedCats.forEach((catName, idx) => {
@@ -1726,7 +1795,6 @@
                 const catPct = totalAmount > 0 ? Math.round((catVal / totalAmount) * 100) : 0;
                 const color = backgroundColors[idx % backgroundColors.length];
 
-                // Hlavný riadok kategórie
                 html += `
                 <div class="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                     <div onclick="filterFromStats('${catName}')" class="flex justify-between items-center cursor-pointer mb-1.5">
@@ -1743,7 +1811,7 @@
                         <div class="h-full rounded-full" style="width: ${catPct}%; background-color: ${color}"></div>
                     </div>`;
 
-                // Podkategórie priamo pod kategóriou
+                // Zoradenie podkategórií podľa sumy od najväčšej
                 const sortedSubs = Object.keys(catData.subs).sort((a,b) => Math.abs(catData.subs[b]) - Math.abs(catData.subs[a]));
                 if (sortedSubs.length > 0) {
                     html += `<div class="pl-5 space-y-1 mt-2 border-l-2 border-slate-100 dark:border-slate-700 ml-1.5">`;
@@ -1790,6 +1858,7 @@
     lucide.createIcons();
     renderMonthChips();
     renderChartMonthChips();
+    renderFilterCategories();
     renderList();
 
 </script>
