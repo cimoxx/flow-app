@@ -13,7 +13,7 @@
     <!-- Knižnica pre grafy -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght=600;700;800&family=Plus+Jakarta+Sans:wght=400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         
         :root {
             --bg-main: #f8fafc;
@@ -427,61 +427,7 @@
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Odstránená prázdna hlavička "undefined" v grafe Burn Rate.</li>
-                    <li>Pridané prekliknutie z Burn Rate grafu a tabuliek priamo na zodpovedajúce transakcie so zachovaním filtrov (synchronizácia vybraného časového obdobia).</li>
-                </ul>
-            </div>
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.15.0</span>
-                </div>
-                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
-                    <li>Kliknutím na kategóriu/podkategóriu v zoznamoch pod grafom ťa aplikácia automaticky presmeruje a vyfiltruje zodpovedajúce transakcie.</li>
-                    <li>Nové vizuálne indikátory (šípky a hover efekty) na interaktívnych štatistikách pre lepšie UX.</li>
-                </ul>
-            </div>
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.14.0</span>
-                </div>
-                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
-                    <li>Optimalizovaný vizuálny UX/UI dizajn pre sekciu Grafy a Burn Rate.</li>
-                    <li>Pridané intuitívne vizuálne zobrazenie podielu výdavkov prostredníctvom progress barov.</li>
-                    <li>Vylepšená čitateľnosť štatistických kárt, prispôsobenie tmavej a svetlej téme.</li>
-                </ul>
-            </div>
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.13.2</span>
-                </div>
-                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
-                    <li>Opravený výber a vycentrovanie aktuálneho mesiaca vo filtri pri načítaní aplikácie.</li>
-                </ul>
-            </div>
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.13.1</span>
-                </div>
-                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
-                    <li>Optimalizovaný prah citlivosti dotyku (max 8px posunu) zabraňujúci neúmyselnému otváraniu okna editácie pri scrollovaní.</li>
-                </ul>
-            </div>
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.13.0</span>
-                </div>
-                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridané priame editovanie transakcie po kliknutí na položku v prehľade.</li>
-                    <li>Vylepšená citlivosť gest pri scrollovaní pre zabránenie nechcenému otváraniu editácie.</li>
-                </ul>
-            </div>
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-extrabold text-[9px]">v2.12.0</span>
-                </div>
-                <ul class="text-xs text-slate-500 space-y-1 pl-3 list-disc font-medium">
-                    <li>Vytvorená samostatná hlavná záložka pre <b>Burn Rate</b> v spodnej navigácii.</li>
-                    <li>Pridané možnosti filtrovania obdobia, mesiacov, úrovne dát, osoby a typov grafov pre Burn Rate.</li>
+                    <li>Opravené zobrazenie priemeru na deň a percenta v Burn Rate.</li>
                 </ul>
             </div>
         </div>
@@ -1735,7 +1681,7 @@
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: chartType === 'doughnut', position: 'bottom', labels: { color: textColor, font: { size: 10, family: "'Plus Jakarta Sans', sans-serif" } } },
-                    title: { display: false } // Rieši tvoju požiadavku na vymazanie prázdnej hlavičky 'undefined'
+                    title: { display: false }
                 },
                 scales: chartType === 'bar' ? {
                     y: { beginAtZero: true, ticks: { color: textColor, font: { size: 9 } }, grid: { color: isDark ? '#1e293b' : '#f1f5f9' } },
@@ -1780,7 +1726,10 @@
                             <div class="w-3 h-3 rounded-full" style="background-color: ${color}"></div>
                             <span class="text-xs font-bold">${cat}${sub ? ' <span class="text-slate-400 font-medium">/</span> ' + sub : ''}</span>
                         </div>
-                        <div class="text-xs font-extrabold">${val.toFixed(2)} €</div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold text-slate-400">${pct}%</span>
+                            <span class="text-xs font-extrabold">${val.toFixed(2)} €</span>
+                        </div>
                     </div>
                     <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
                         <div class="h-full rounded-full" style="width: ${pct}%; background-color: ${color}"></div>
