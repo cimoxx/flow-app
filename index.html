@@ -395,7 +395,12 @@
                 <div id="cat-grid" class="grid grid-cols-4 gap-1.5"></div>
             </div>
             <div id="sub-section" class="hidden">
-                <label class="text-[9px] font-black text-slate-400 uppercase block mb-2 px-1 tracking-widest">Podkategória</label>
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Podkategória</label>
+                    <button type="button" onclick="resetCategorySelection()" class="text-[9px] font-extrabold text-emerald-500 uppercase tracking-wider flex items-center gap-1">
+                        <i data-lucide="arrow-left" class="w-3 h-3"></i> Zmeniť kategóriu
+                    </button>
+                </div>
                 <div id="sub-grid" class="flex flex-wrap gap-1.5"></div>
             </div>
             <div class="grid grid-cols-2 gap-2">
@@ -423,28 +428,20 @@
         <div class="space-y-4 text-xs">
             <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.19.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.20.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
+                </div>
+                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Dvojúrovňový výber v modálnom okne: najskôr sa vyberá hlavná kategória a po jej zvolení sa zobrazia podkategórie s možnosťou návratu.</li>
+                </ul>
+            </div>
+            <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.19.0</span>
                 </div>
                 <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
                     <li>Rýchle filtre v prehľade transakcií sú zoradené zostupne podľa výšky sumy.</li>
                     <li>Pridaná podpora pre filtrovanie transakcií aj podľa podkategórií priamo v rýchlych filtroch.</li>
-                </ul>
-            </div>
-            <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.18.0</span>
-                </div>
-                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridaný podrobný rozpad podkategórií priamo pod hlavnými kategóriami v Burn Rate analýze.</li>
-                </ul>
-            </div>
-            <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.17.0</span>
-                </div>
-                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Optimalizácia výkonu a vylepšenie správy predvolieb pre grafy.</li>
                 </ul>
             </div>
         </div>
@@ -1003,14 +1000,25 @@
         
         const subSection = document.getElementById('sub-section');
         const subGrid = document.getElementById('sub-grid');
+        const catGridContainer = document.getElementById('cat-grid').parentElement;
         
         if(cat && cat.subs && cat.subs.length > 0) { 
+            catGridContainer.classList.add('hidden');
             subSection.classList.remove('hidden'); 
             subGrid.innerHTML = cat.subs.map(s => `<button type="button" onclick="selectSub('${s}', event)" data-sub="${s}" class="sub-chip px-3 py-2 rounded-xl font-extrabold uppercase shadow-sm">${s}</button>`).join(''); 
         } else { 
-            subSection.classList.add('hidden'); 
-            subGrid.innerHTML = '';
+            catGridContainer.classList.add('hidden');
+            subSection.classList.remove('hidden'); 
+            subGrid.innerHTML = '<span class="text-[10px] text-slate-400 font-bold px-1">Žiadne podkategórie</span>';
         } 
+    }
+
+    function resetCategorySelection() {
+        selectedCat = '';
+        selectedSub = '';
+        document.getElementById('sub-section').classList.add('hidden');
+        document.getElementById('cat-grid').parentElement.classList.remove('hidden');
+        renderCatGrid();
     }
 
     function selectSub(s, e = null) { 
@@ -1153,17 +1161,14 @@
         const container = document.getElementById('category-summary');
         if (!container) return;
         
-        // Zostavenie zoznamu pre súhrnné dlaždice vrátane podkategórií
         const filterItems = [];
         Object.keys(sums).forEach(cat => {
-            // Hlavná kategória
             filterItems.push({
                 type: 'cat',
                 name: cat,
                 key: cat,
                 amount: sums[cat].total
             });
-            // Podkategórie danej kategórie
             if (sums[cat].subs) {
                 Object.keys(sums[cat].subs).forEach(sub => {
                     filterItems.push({
@@ -1177,7 +1182,6 @@
             }
         });
 
-        // Zoradenie zostupne podľa výšky sumy
         filterItems.sort((a, b) => b.amount - a.amount);
 
         if (filterItems.length === 0) {
