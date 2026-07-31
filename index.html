@@ -353,7 +353,7 @@
             <canvas id="burnRateTabChart" class="max-h-[300px]"></canvas>
         </div>
 
-        <!-- Rozpad čerpania po kategóriách a podkategóriách (Tabuľkový/Zoznamový prehľad) -->
+        <!-- Rozpad čerpania po kategóriách/podkategóriách -->
         <div id="burn-stats-breakdown" class="space-y-3 pt-1"></div>
     </main>
 
@@ -407,7 +407,7 @@
     </div>
 </div>
 
-<!-- CHANGELOG MODAL -->
+<!-- CHANGELOG MODAL (Posledné 3 záznamy) -->
 <div id="changelog-modal" class="fixed inset-0 bg-slate-900/90 z-[50] hidden backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4 max-h-[85vh] overflow-y-auto">
         <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -421,13 +421,34 @@
         </div>
         
         <div class="space-y-4 text-xs">
+            <!-- Záznam 1 -->
             <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.18.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.17.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
                 </div>
                 <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
-                    <li>Pridaný podrobný rozpad podkategórií priamo pod hlavnými kategóriami v Burn Rate analýze.</li>
+                    <li>Obnovenie zobrazenia denného priemeru v Burn Rate analýze.</li>
+                    <li>Pridané filtrovanie transakcií po kliknutí na položku v tabuľke pod grafom alebo v Burn Rate.</li>
+                </ul>
+            </div>
+            <!-- Záznam 2 -->
+            <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-extrabold text-[9px]">v2.16.0</span>
+                </div>
+                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Optimalizácia ukladania a správnej synchronizácie užívateľských predvolieb pre grafy.</li>
+                    <li>Vylepšenie dotykových gest (swipe) pri zobrazení zoznamu transakcií.</li>
+                </ul>
+            </div>
+            <!-- Záznam 3 -->
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-extrabold text-[9px]">v2.15.0</span>
+                </div>
+                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Rozšírenie analytických možností a samostatná záložka pre Burn Rate výpočty.</li>
                 </ul>
             </div>
         </div>
@@ -491,6 +512,7 @@
     let selectedChartMonths = []; 
     let selectedMonths = [new Date().getMonth()];
 
+    /* Sledovanie gest a scrollovania */
     let touchStartX = 0;
     let touchStartY = 0;
     let isSwiping = false;
@@ -776,6 +798,7 @@
         } 
     }
 
+    /* --- GESTÁ SWIPE A DETEKCIA SCROLLOVANIA --- */
     function handleSwipeStart(e, id) {
         const touch = e.touches[0];
         touchStartX = touch.clientX;
@@ -791,6 +814,7 @@
         const diffX = touch.clientX - touchStartX;
         const diffY = touch.clientY - touchStartY;
 
+        /* Ak uživatel scrolluje (vertikálny pohyb > 10px), zruší sa swipe gestá */
         if (!isSwiping && Math.abs(diffY) > 10 && Math.abs(diffY) > Math.abs(diffX)) {
             const el = document.getElementById(`item-${id}`);
             if (el) {
@@ -800,6 +824,7 @@
             return;
         }
 
+        /* Ak je horizontálny posun výraznejší, aktivuje sa swipe */
         if (Math.abs(diffX) > 10) {
             isSwiping = true;
         }
@@ -856,6 +881,7 @@
         isSwiping = false;
     }
 
+    /* --- ADMIN ZÓNA --- */
     function renderManageCats() {
         document.getElementById('manage-cats-list').innerHTML = categories.map((c, i) => `
             <div class="flex items-center gap-2">
@@ -1287,6 +1313,7 @@
         lucide.createIcons();
     }
 
+    /* --- LOGIKA PRE GRAFY A BURN RATE --- */
     function setChartPeriod(period) {
         selectedChartPeriod = period;
         selectedChartMonths = [];
@@ -1601,7 +1628,6 @@
         if(metricsContainer) metricsContainer.innerHTML = '';
         
         const aggregated = {};
-        const categoryBreakdown = {};
         let totalAmount = 0;
         
         filtered.forEach(item => {
@@ -1612,28 +1638,17 @@
             
             if (!valid) return;
             
-            let val = item.amount;
-            if (dataMode === 'balance' && item.type === 'expense') val = -val;
-            
             let key = item.category;
             if (levelMode === 'sub') {
                 key = item.category + (item.sub ? '|' + item.sub : '|');
             }
             
             if (!aggregated[key]) aggregated[key] = 0;
-            aggregated[key] += val;
-
-            // Zber hierarchických dát pre tabuľkový rozpad (kategórie -> podkategórie)
-            if (!categoryBreakdown[item.category]) {
-                categoryBreakdown[item.category] = { total: 0, subs: {} };
-            }
-            categoryBreakdown[item.category].total += val;
             
-            const subName = item.sub ? item.sub : 'Nezaradené';
-            if (!categoryBreakdown[item.category].subs[subName]) {
-                categoryBreakdown[item.category].subs[subName] = 0;
-            }
-            categoryBreakdown[item.category].subs[subName] += val;
+            let val = item.amount;
+            if (dataMode === 'balance' && item.type === 'expense') val = -val;
+            
+            aggregated[key] += val;
         });
         
         const labels = [];
@@ -1709,66 +1724,38 @@
             }
         });
 
-        // Vykreslenie podrobnej tabuľky / rozpadu s podkategóriami priamo pod hlavnými kategóriami
-        if (statsContainer && Object.keys(categoryBreakdown).length > 0) {
-            let html = `<div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm">
-                <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    <span>Kategória / Podkategória</span>
-                    <span>Suma / Podiel</span>
-                </div>
-                <div class="divide-y divide-slate-100 dark:divide-slate-700/50">`;
-
-            const sortedCats = Object.keys(categoryBreakdown).sort((a,b) => Math.abs(categoryBreakdown[b].total) - Math.abs(categoryBreakdown[a].total));
-
-            sortedCats.forEach((catName, idx) => {
-                const catData = categoryBreakdown[catName];
-                const catVal = Math.abs(catData.total);
-                const catPct = totalAmount > 0 ? Math.round((catVal / totalAmount) * 100) : 0;
+        if(statsContainer && labels.length > 0) {
+            let html = '';
+            sortedKeys.forEach((k, idx) => {
+                const val = Math.abs(aggregated[k]);
+                const pct = totalAmount > 0 ? Math.round((val/totalAmount)*100) : 0;
                 const color = backgroundColors[idx % backgroundColors.length];
-
-                // Hlavný riadok kategórie
-                html += `
-                <div class="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                    <div onclick="filterFromStats('${catName}')" class="flex justify-between items-center cursor-pointer mb-1.5">
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 rounded-full" style="background-color: ${color}"></div>
-                            <span class="text-xs font-extrabold uppercase">${catName}</span>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span class="text-[10px] font-bold text-slate-400">${catPct}%</span>
-                            <span class="text-xs font-extrabold">${catVal.toFixed(2)} €</span>
-                        </div>
-                    </div>
-                    <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mb-2">
-                        <div class="h-full rounded-full" style="width: ${catPct}%; background-color: ${color}"></div>
-                    </div>`;
-
-                // Podkategórie priamo pod kategóriou
-                const sortedSubs = Object.keys(catData.subs).sort((a,b) => Math.abs(catData.subs[b]) - Math.abs(catData.subs[a]));
-                if (sortedSubs.length > 0) {
-                    html += `<div class="pl-5 space-y-1 mt-2 border-l-2 border-slate-100 dark:border-slate-700 ml-1.5">`;
-                    sortedSubs.forEach((subName, sIdx) => {
-                        const subVal = Math.abs(catData.subs[subName]);
-                        const subPct = catVal > 0 ? Math.round((subVal / catVal) * 100) : 0;
-                        const isLast = sIdx === sortedSubs.length - 1;
-                        const prefixIcon = isLast ? '└── ' : '├── ';
-
-                        html += `
-                        <div onclick="filterFromStats('${catName}', '${subName}')" class="flex justify-between items-center text-[11px] py-1 cursor-pointer hover:opacity-80 transition-opacity">
-                            <span class="font-medium text-slate-500 dark:text-slate-400 font-mono text-[10px]">${prefixIcon}<span class="font-sans font-bold text-slate-700 dark:text-slate-300">${subName}</span></span>
-                            <div class="flex items-center gap-2">
-                                <span class="text-[9px] text-slate-400 font-medium">${subPct}% z kat.</span>
-                                <span class="font-bold text-xs">${subVal.toFixed(2)} €</span>
-                            </div>
-                        </div>`;
-                    });
-                    html += `</div>`;
+                
+                let cat = k;
+                let sub = null;
+                if (levelMode === 'sub' && k.includes('|')) {
+                    const parts = k.split('|');
+                    cat = parts[0];
+                    sub = parts[1] !== '' ? parts[1] : null;
                 }
 
-                html += `</div>`;
+                html += `
+                <div onclick="filterFromStats('${cat}', ${sub ? "'" + sub + "'" : 'null'})" class="flex flex-col gap-1 cursor-pointer bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 active:scale-95 transition-all">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" style="background-color: ${color}"></div>
+                            <span class="text-xs font-bold">${cat}${sub ? ' <span class="text-slate-400 font-medium">/</span> ' + sub : ''}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold text-slate-400">${pct}%</span>
+                            <span class="text-xs font-extrabold">${val.toFixed(2)} €</span>
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full" style="width: ${pct}%; background-color: ${color}"></div>
+                    </div>
+                </div>`;
             });
-
-            html += `</div></div>`;
             statsContainer.innerHTML = html;
         } else if (statsContainer) {
             statsContainer.innerHTML = '<div class="text-center py-4 text-xs font-bold text-slate-400">Žiadne dáta pre zvolené obdobie</div>';
