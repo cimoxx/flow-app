@@ -402,6 +402,30 @@
                 <input type="text" id="f-note" placeholder="Poznámka..." class="p-3.5 text-xs outline-none">
                 <input type="date" id="f-date" class="p-3.5 text-xs outline-none">
             </div>
+
+            <!-- NASTAVENIE PRAVIDELNEJ PLATBY -->
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="repeat" class="w-4 h-4 text-emerald-500"></i>
+                        <span class="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">Pravidelná platba</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="f-recurring" onchange="toggleRecurringOptions()" class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+                <div id="recurring-options" class="hidden space-y-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <label class="text-[8px] font-black text-slate-400 uppercase block px-1 tracking-wider">Frekvencia opakovania</label>
+                    <select id="f-frequency" class="w-full p-2.5 text-xs outline-none">
+                        <option value="weekly">Týždenne</option>
+                        <option value="monthly" selected>Mesačne</option>
+                        <option value="quarterly">Štvrťročne</option>
+                        <option value="yearly">Ročne</option>
+                    </select>
+                </div>
+            </div>
+
             <button type="button" id="del-btn" onclick="handleDelete()" class="w-full text-red-400 text-[10px] font-black uppercase pt-2 hidden">Zmazať transakciu</button>
         </form>
     </div>
@@ -423,8 +447,17 @@
         <div class="space-y-4 text-xs">
             <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.20.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.21.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
+                </div>
+                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Pridaná podpora pre nastavenie pravidelných platieb (týždenne, mesačne, štvrťročne, ročne) priamo v detaile transakcie.</li>
+                    <li>Vizuálne označenie opakovane sa vyskytujúcich platieb ikonou v zozname.</li>
+                </ul>
+            </div>
+            <div class="border-b border-slate-100 dark:border-slate-800 pb-3 opacity-75">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-500 font-extrabold text-[9px]">v2.20.0</span>
                 </div>
                 <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
                     <li>Doplnené priemerné denné čerpanie a predpoklad mesačného čerpania ku každej hlavnej kategórii v Burn Rate prehľade.</li>
@@ -503,6 +536,11 @@
     let touchStartX = 0;
     let touchStartY = 0;
     let isSwiping = false;
+
+    function toggleRecurringOptions() {
+        const isChecked = document.getElementById('f-recurring').checked;
+        document.getElementById('recurring-options').classList.toggle('hidden', !isChecked);
+    }
 
     function getCleanDateStr(dStr) {
         if (!dStr) return getTodayStr();
@@ -699,6 +737,11 @@
             setUser(i.user || 'Lukáš'); 
             setType(i.type || 'expense'); 
             
+            const isRecurring = !!i.isRecurring;
+            document.getElementById('f-recurring').checked = isRecurring;
+            document.getElementById('f-frequency').value = i.frequency || 'monthly';
+            toggleRecurringOptions();
+
             renderCatGrid();
             selectCat(i.category);
             if(i.sub) { selectSub(i.sub); }
@@ -708,6 +751,10 @@
             document.getElementById('entry-form').reset();
             entryIdInput.value = "";
             document.getElementById('f-date').value = getTodayStr();
+            document.getElementById('f-recurring').checked = false;
+            document.getElementById('f-frequency').value = 'monthly';
+            toggleRecurringOptions();
+            
             setUser(localStorage.getItem('f_last_user') || 'Lukáš'); 
             setType('expense');
             
@@ -742,6 +789,9 @@
         const localRecord = db.find(x => String(x.id) === String(id));
         if (localRecord) currentProcessed = localRecord.processed;
 
+        const isRecurring = document.getElementById('f-recurring').checked;
+        const frequency = isRecurring ? document.getElementById('f-frequency').value : null;
+
         const entry = { 
             id: id, 
             date: cleanDate,
@@ -753,6 +803,8 @@
             note: document.getElementById('f-note').value, 
             processed: currentProcessed, 
             user: curUser, 
+            isRecurring: isRecurring,
+            frequency: frequency,
             action: 'save' 
         };
 
@@ -1328,7 +1380,10 @@
                                 
                                 <div class="flex-1">
                                     <div class="flex justify-between items-center pr-3">
-                                        <span class="font-bold text-xs tracking-tight">${item.category}${item.sub ? ' <span class="text-slate-400 font-medium">/</span> '+item.sub : ''}</span>
+                                        <span class="font-bold text-xs tracking-tight flex items-center gap-1">
+                                            ${item.isRecurring ? '<i data-lucide="repeat" class="w-3 h-3 text-emerald-500 inline shrink-0"></i>' : ''}
+                                            ${item.category}${item.sub ? ' <span class="text-slate-400 font-medium">/</span> '+item.sub : ''}
+                                        </span>
                                         <span class="font-extrabold text-xs ${item.type === 'income' ? 'text-emerald-500' : ''}">${parseFloat(item.amount).toFixed(2)}€</span>
                                     </div>
                                     <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wide mt-1">${item.note ? item.note : ''}</div>
