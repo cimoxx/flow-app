@@ -447,8 +447,16 @@
         <div class="space-y-4 text-xs">
             <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.21.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.22.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
+                </div>
+                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Automatické generovanie a nahrávanie pravidelných platieb do nového mesiaca pri štarte aplikácie a po synchronizácii.</li>
+                </ul>
+            </div>
+            <div class="border-b border-slate-100 dark:border-slate-800 pb-3 opacity-75">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-500 font-extrabold text-[9px]">v2.21.0</span>
                 </div>
                 <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
                     <li>Pridaná podpora pre nastavenie pravidelných platieb (týždenne, mesačne, štvrťročne, ročne) priamo v detaile transakcie.</li>
@@ -592,6 +600,69 @@
         return `${cleanD} ${timeStr}`;
     }
 
+    /* AUTOMATICKÉ NAHRÁVANIE PRAVIDELNÝCH PLATIEB DO NOVÉHO MESIACA */
+    function processRecurringPayments() {
+        const selectedYear = parseInt(document.getElementById('filter-year')?.value || new Date().getFullYear());
+        const activeMonths = selectedMonths.length > 0 ? selectedMonths : [new Date().getMonth()];
+        let hasNew = false;
+
+        db.forEach(item => {
+            if (item.isRecurring) {
+                const origClean = getCleanDateStr(item.date);
+                const origParts = origClean.split('-');
+                if (origParts.length !== 3) return;
+                
+                const origDay = origParts[2];
+                const freq = item.frequency || 'monthly';
+
+                activeMonths.forEach(targetMonth => {
+                    let monthInterval = 1;
+                    if (freq === 'quarterly') monthInterval = 3;
+                    if (freq === 'yearly') monthInterval = 12;
+
+                    const origMonth = parseInt(origParts[1]) - 1;
+                    const origYear = parseInt(origParts[0]);
+
+                    const diffMonths = (selectedYear - origYear) * 12 + (targetMonth - origMonth);
+                    if (diffMonths > 0 && diffMonths % monthInterval === 0) {
+                        const targetMonthStr = String(targetMonth + 1).padStart(2, '0');
+                        const daysInMonth = new Date(selectedYear, targetMonth + 1, 0).getDate();
+                        const targetDayStr = String(Math.min(parseInt(origDay), daysInMonth)).padStart(2, '0');
+                        const targetDateStr = `${selectedYear}-${targetMonthStr}-${targetDayStr}`;
+
+                        const exists = db.some(x => 
+                            x.isRecurring && 
+                            x.category === item.category && 
+                            (x.sub || '') === (item.sub || '') && 
+                            parseFloat(x.amount) === parseFloat(item.amount) &&
+                            getCleanDateStr(x.date) === targetDateStr
+                        );
+
+                        if (!exists) {
+                            const newId = 'ID-REC-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+                            const newEntry = {
+                                ...item,
+                                id: newId,
+                                date: targetDateStr,
+                                full_date: `${targetDateStr} 08:00:00`,
+                                processed: false,
+                                action: 'save'
+                            };
+                            db.push(newEntry);
+                            syncQueue.push(newEntry);
+                            hasNew = true;
+                        }
+                    }
+                });
+            }
+        });
+
+        if (hasNew) {
+            saveData(false);
+            processSyncQueue();
+        }
+    }
+
     function openChangelogModal() { document.getElementById('changelog-modal').classList.remove('hidden'); }
     function closeChangelogModal() { document.getElementById('changelog-modal').classList.add('hidden'); }
 
@@ -698,6 +769,7 @@
                         return { ...c, date: getCleanDateStr(c.date) };
                     });
                     localStorage.setItem('f_db_v20', JSON.stringify(db)); 
+                    processRecurringPayments();
                     renderList(); 
                     updateAnalytics();
                     updateBurnRateTab();
@@ -817,6 +889,7 @@
         syncQueue.push(entry); 
         saveData(false); 
         closeModal(); 
+        processRecurringPayments();
         renderList(); 
         updateAnalytics();
         updateBurnRateTab();
@@ -1090,6 +1163,7 @@
             renderChartMonthChips();
             updateBurnRateTab();
         } else {
+            processRecurringPayments();
             renderList();
         }
     }
@@ -1108,6 +1182,7 @@
             selectedMonths.push(monthIdx);
         }
         renderMonthChips();
+        processRecurringPayments();
         renderList();
         updateAnalytics();
         updateBurnRateTab();
@@ -1909,6 +1984,7 @@
     lucide.createIcons();
     renderMonthChips();
     renderChartMonthChips();
+    processRecurringPayments();
     renderList();
 
 </script>
