@@ -416,15 +416,23 @@
                 <h3 class="text-xl font-extrabold">Changelog</h3>
             </div>
             <button type="button" onclick="closeChangelogModal()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                <i data-lucide="x" class="w-5 h-5">__</i>
+                <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
         
         <div class="space-y-4 text-xs">
             <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.19.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.20.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
+                </div>
+                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Doplnené priemerné denné čerpanie a predpoklad mesačného čerpania ku každej hlavnej kategórii v Burn Rate prehľade.</li>
+                </ul>
+            </div>
+            <div class="border-b border-slate-100 dark:border-slate-800 pb-3 opacity-75">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-500 font-extrabold text-[9px]">v2.19.0</span>
                 </div>
                 <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
                     <li>Dvojúrovňové filtrovanie v prehľade transakcií (hlavné kategórie a po výbere konkrétnej kategórie zobrazenie jej podkategórií).</li>
@@ -1775,6 +1783,8 @@
                 const catData = categoryBreakdown[catName];
                 const catVal = Math.abs(catData.total);
                 const catPct = totalAmount > 0 ? Math.round((catVal / totalAmount) * 100) : 0;
+                const catDailyVal = daysCount > 0 ? (catVal / daysCount) : 0;
+                const catMonthlyProj = catDailyVal * 30.5;
                 const color = backgroundColors[idx % backgroundColors.length];
 
                 html += `
@@ -1791,6 +1801,11 @@
                     </div>
                     <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mb-2">
                         <div class="h-full rounded-full" style="width: ${catPct}%; background-color: ${color}"></div>
+                    </div>
+                    <!-- PRIEMERNÉ DENNÉ ČERPANIE A PREDPOKLAD DO KONCA MESIACA PRE HLAVNÚ KATEGÓRIU -->
+                    <div class="flex justify-between items-center text-[9.5px] font-extrabold text-amber-500 bg-amber-500/5 dark:bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/10 mb-2">
+                        <span>Priemer: ${catDailyVal.toFixed(2)} €/deň</span>
+                        <span>Odhad: ${catMonthlyProj.toFixed(2)} €/mes.</span>
                     </div>`;
 
                 const sortedSubs = Object.keys(catData.subs).sort((a,b) => Math.abs(catData.subs[b]) - Math.abs(catData.subs[a]));
