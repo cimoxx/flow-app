@@ -447,8 +447,16 @@
         <div class="space-y-4 text-xs">
             <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.21.0</span>
+                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-extrabold text-[9px]">v2.22.0</span>
                     <span class="text-[10px] font-bold text-slate-400">Aktuálna</span>
+                </div>
+                <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
+                    <li>Automatické generovanie a nahrávanie pravidelných platieb do nového mesiaca pri štarte aplikácie a po synchronizácii.</li>
+                </ul>
+            </div>
+            <div class="border-b border-slate-100 dark:border-slate-800 pb-3 opacity-75">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-500 font-extrabold text-[9px]">v2.21.0</span>
                 </div>
                 <ul class="text-slate-600 dark:text-slate-300 space-y-1 pl-3 list-disc font-medium">
                     <li>Pridaná podpora pre nastavenie pravidelných platieb (týždenne, mesačne, štvrťročne, ročne) priamo v detaile transakcie.</li>
@@ -592,6 +600,69 @@
         return `${cleanD} ${timeStr}`;
     }
 
+    /* AUTOMATICKÉ NAHRÁVANIE PRAVIDELNÝCH PLATIEB DO NOVÉHO MESIACA */
+    function processRecurringPayments() {
+        const selectedYear = parseInt(document.getElementById('filter-year')?.value || new Date().getFullYear());
+        const activeMonths = selectedMonths.length > 0 ? selectedMonths : [new Date().getMonth()];
+        let hasNew = false;
+
+        db.forEach(item => {
+            if (item.isRecurring) {
+                const origClean = getCleanDateStr(item.date);
+                const origParts = origClean.split('-');
+                if (origParts.length !== 3) return;
+                
+                const origDay = origParts[2];
+                const freq = item.frequency || 'monthly';
+
+                activeMonths.forEach(targetMonth => {
+                    let monthInterval = 1;
+                    if (freq === 'quarterly') monthInterval = 3;
+                    if (freq === 'yearly') monthInterval = 12;
+
+                    const origMonth = parseInt(origParts[1]) - 1;
+                    const origYear = parseInt(origParts[0]);
+
+                    const diffMonths = (selectedYear - origYear) * 12 + (targetMonth - origMonth);
+                    if (diffMonths > 0 && diffMonths % monthInterval === 0) {
+                        const targetMonthStr = String(targetMonth + 1).padStart(2, '0');
+                        const daysInMonth = new Date(selectedYear, targetMonth + 1, 0).getDate();
+                        const targetDayStr = String(Math.min(parseInt(origDay), daysInMonth)).padStart(2, '0');
+                        const targetDateStr = `${selectedYear}-${targetMonthStr}-${targetDayStr}`;
+
+                        const exists = db.some(x => 
+                            x.isRecurring && 
+                            x.category === item.category && 
+                            (x.sub || '') === (item.sub || '') && 
+                            parseFloat(x.amount) === parseFloat(item.amount) &&
+                            getCleanDateStr(x.date) === targetDateStr
+                        );
+
+                        if (!exists) {
+                            const newId = 'ID-REC-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+                            const newEntry = {
+                                ...item,
+                                id: newId,
+                                date: targetDateStr,
+                                full_date: `${targetDateStr} 08:00:00`,
+                                processed: false,
+                                action: 'save'
+                            };
+                            db.push(newEntry);
+                            syncQueue.push(newEntry);
+                            hasNew = true;
+                        }
+                    }
+                });
+            }
+        });
+
+        if (hasNew) {
+            saveData(false);
+            processSyncQueue();
+        }
+    }
+
     function openChangelogModal() { document.getElementById('changelog-modal').classList.remove('hidden'); }
     function closeChangelogModal() { document.getElementById('changelog-modal').classList.add('hidden'); }
 
@@ -612,6 +683,7 @@
     function manualSync() {
         processSyncQueue();
         syncTransactions('pull');
+        syncCategories('pull');
     }
 
     function setUser(u) {
@@ -698,6 +770,7 @@
                         return { ...c, date: getCleanDateStr(c.date) };
                     });
                     localStorage.setItem('f_db_v20', JSON.stringify(db)); 
+                    processRecurringPayments();
                     renderList(); 
                     updateAnalytics();
                     updateBurnRateTab();
@@ -817,6 +890,7 @@
         syncQueue.push(entry); 
         saveData(false); 
         closeModal(); 
+        processRecurringPayments();
         renderList(); 
         updateAnalytics();
         updateBurnRateTab();
@@ -1090,14 +1164,29 @@
             renderChartMonthChips();
             updateBurnRateTab();
         } else {
+            processRecurringPayments();
             renderList();
         }
     }
     
     async function syncCategories(action = 'push') {
         updateSyncUI('syncing');
-        if (action === 'push') { try { await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'sync_categories', categories: categories }) }); } catch (e) { } }
-        else { try { const res = await fetch(GOOGLE_URL + "?get=categories"); const cloudData = await res.json(); if(Array.isArray(cloudData)) { categories = cloudData; localStorage.setItem('f_cats_v20', JSON.stringify(categories)); renderCatGrid(); if(!document.getElementById('settings-screen').classList.contains('hidden') && activeSettingsCat === null) renderManageCats(); } } catch (e) { } }
+        if (action === 'push') { 
+            try { 
+                await fetch(GOOGLE_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'sync_categories', categories: categories }) }); 
+            } catch (e) { } 
+        } else { 
+            try { 
+                const res = await fetch(GOOGLE_URL + "?get=categories"); 
+                const cloudData = await res.json(); 
+                if(Array.isArray(cloudData) && cloudData.length > 0) { 
+                    categories = cloudData; 
+                    localStorage.setItem('f_cats_v20', JSON.stringify(categories)); 
+                    renderCatGrid(); 
+                    if(!document.getElementById('settings-screen').classList.contains('hidden') && activeSettingsCat === null) renderManageCats(); 
+                } 
+            } catch (e) { } 
+        }
         updateSyncUI('ok');
     }
 
@@ -1108,6 +1197,7 @@
             selectedMonths.push(monthIdx);
         }
         renderMonthChips();
+        processRecurringPayments();
         renderList();
         updateAnalytics();
         updateBurnRateTab();
@@ -1518,12 +1608,16 @@
             if (document.getElementById(prefix + 'data-mode')) document.getElementById(prefix + 'data-mode').value = p.data;
             if (document.getElementById(prefix + 'user-filter')) document.getElementById(prefix + 'user-filter').value = p.user;
 
-            if (p.isBurn) updateBurnRateTab(); else updateAnalytics();
+            if (p.isBurn) {
+                updateBurnRateTab();
+            } else {
+                updateAnalytics();
+            }
         }
     }
 
     function deletePreset(id, e) {
-        e.stopPropagation();
+        if (e) e.stopPropagation();
         if (confirm("Zmazať uložený pohľad?")) {
             chartPresets = chartPresets.filter(x => x.id !== id);
             localStorage.setItem('f_chart_presets_v20', JSON.stringify(chartPresets));
@@ -1537,380 +1631,272 @@
         const container = document.getElementById(containerId);
         if (!container) return;
 
-        const filteredPresets = chartPresets.filter(p => !!p.isBurn === isBurn);
+        const filtered = chartPresets.filter(p => !!p.isBurn === isBurn);
 
-        if (filteredPresets.length === 0) {
-            container.innerHTML = `<span class="text-[9px] text-slate-400 font-bold px-1">Žiadne uložené pohľady</span>`;
+        if (filtered.length === 0) {
+            container.innerHTML = '';
             return;
         }
 
-        container.innerHTML = filteredPresets.map(p => `
-            <div onclick="applyPreset('${p.id}')" class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1 text-[9.5px] font-extrabold cursor-pointer shrink-0">
+        container.innerHTML = filtered.map(p => `
+            <div onclick="applyPreset('${p.id}')" class="flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[9px] font-black uppercase text-slate-500 cursor-pointer hover:bg-emerald-500/10 hover:text-emerald-500 transition-all shrink-0">
                 <span>${p.name}</span>
-                <button type="button" onclick="deletePreset('${p.id}', event)" class="text-slate-400 hover:text-red-500 ml-1"><i data-lucide="x" class="w-3 h-3"></i></button>
+                <i data-lucide="x" onclick="deletePreset('${p.id}', event)" class="w-3 h-3 hover:text-red-500"></i>
             </div>
         `).join('');
         lucide.createIcons();
     }
 
     function updateAnalytics() {
-        if (document.getElementById('screen-analytics').classList.contains('hidden')) return;
-
-        const chartType = document.getElementById('chart-type').value;
-        const levelMode = document.getElementById('chart-level-mode').value;
+        const type = document.getElementById('chart-type').value;
+        const level = document.getElementById('chart-level-mode').value;
         const dataMode = document.getElementById('chart-data-mode').value;
         const userFilter = document.getElementById('chart-user-filter').value;
 
         let filtered = getAnalyticsDataForPeriod();
-
         if (userFilter !== 'all') {
-            filtered = filtered.filter(d => (d.user || 'Lukáš') === userFilter);
+            filtered = filtered.filter(x => x.user === userFilter);
         }
 
-        const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const textColor = isDark ? '#94a3b8' : '#64748b';
-
-        let backgroundColors = [
-            '#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', 
-            '#06b6d4', '#f97316', '#64748b', '#84cc16', '#a855f7',
-            '#14b8a6', '#6366f1', '#d97706', '#f43f5e', '#a855f7'
-        ];
-
-        const statsContainer = document.getElementById('chart-stats-summary');
-        if(statsContainer) statsContainer.innerHTML = '';
-        
         const aggregated = {};
-        let totalAmount = 0;
-        
         filtered.forEach(item => {
-            let valid = false;
-            if (dataMode === 'expense' && item.type === 'expense') valid = true;
-            if (dataMode === 'income' && item.type === 'income') valid = true;
-            if (dataMode === 'balance') valid = true;
-            
-            if (!valid) return;
-            
+            if (dataMode === 'expense' && item.type !== 'expense') return;
+            if (dataMode === 'income' && item.type !== 'income') return;
+
             let key = item.category;
-            if (levelMode === 'sub') {
-                key = item.category + (item.sub ? '|' + item.sub : '|');
+            if (level === 'sub') {
+                key = item.sub ? `${item.category} / ${item.sub}` : `${item.category} / Nezaradené`;
             }
-            
+
             if (!aggregated[key]) aggregated[key] = 0;
-            
-            let val = item.amount;
-            if (dataMode === 'balance' && item.type === 'expense') val = -val;
-            
-            aggregated[key] += val;
+
+            if (dataMode === 'balance') {
+                aggregated[key] += (item.type === 'income' ? item.amount : -item.amount);
+            } else {
+                aggregated[key] += item.amount;
+            }
         });
-        
-        const labels = [];
-        const dataVals = [];
-        const sortedKeys = Object.keys(aggregated).sort((a,b) => Math.abs(aggregated[b]) - Math.abs(aggregated[a]));
-        
-        sortedKeys.forEach(k => {
-            labels.push(k.replace('|', ' - '));
-            dataVals.push(Math.abs(aggregated[k]));
-            totalAmount += Math.abs(aggregated[k]);
-        });
+
+        const labels = Object.keys(aggregated);
+        const dataValues = Object.values(aggregated);
 
         const ctx = document.getElementById('analyticsChart').getContext('2d');
         if (analyticsChartInstance) analyticsChartInstance.destroy();
-        
+
+        const colors = [
+            '#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', 
+            '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#06b6d4'
+        ];
+
         analyticsChartInstance = new Chart(ctx, {
-            type: chartType,
+            type: type,
             data: {
                 labels: labels,
                 datasets: [{
-                    data: dataVals,
-                    backgroundColor: backgroundColors,
-                    borderWidth: 0,
-                    borderRadius: chartType === 'bar' ? 4 : 0
+                    data: dataValues,
+                    backgroundColor: colors,
+                    borderWidth: 0
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: chartType === 'doughnut', position: 'bottom', labels: { color: textColor, font: { size: 10, family: "'Plus Jakarta Sans', sans-serif" } } },
-                    title: { display: false }
-                },
-                scales: chartType === 'bar' ? {
-                    y: { beginAtZero: true, ticks: { color: textColor, font: { size: 9 } }, grid: { color: isDark ? '#1e293b' : '#f1f5f9' } },
-                    x: { ticks: { color: textColor, font: { size: 9 } }, grid: { display: false } }
-                } : undefined,
-                onClick: (e, elements, chart) => {
-                    if (elements.length > 0) {
-                        const idx = elements[0].index;
-                        const label = chart.data.labels[idx];
-                        let cat = label;
-                        let sub = null;
-                        if (levelMode === 'sub' && label.includes(' - ')) {
-                            const parts = label.split(' - ');
-                            cat = parts[0];
-                            sub = parts[1] !== '' ? parts[1] : null;
-                        }
-                        filterFromStats(cat, sub);
+                    legend: {
+                        display: type === 'doughnut',
+                        position: 'bottom',
+                        labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } }
                     }
                 }
             }
         });
 
-        if(statsContainer && labels.length > 0) {
-            let html = '';
-            sortedKeys.forEach((k, idx) => {
-                const val = Math.abs(aggregated[k]);
-                const pct = totalAmount > 0 ? Math.round((val/totalAmount)*100) : 0;
-                const color = backgroundColors[idx % backgroundColors.length];
-                
-                let cat = k;
-                let sub = null;
-                if (levelMode === 'sub' && k.includes('|')) {
-                    const parts = k.split('|');
-                    cat = parts[0];
-                    sub = parts[1] !== '' ? parts[1] : null;
-                }
-
-                html += `
-                <div onclick="filterFromStats('${cat}', ${sub ? "'" + sub + "'" : 'null'})" class="flex flex-col gap-1 cursor-pointer bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 active:scale-95 transition-all">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 rounded-full" style="background-color: ${color}"></div>
-                            <span class="text-xs font-bold">${cat}${sub ? ' <span class="text-slate-400 font-medium">/</span> ' + sub : ''}</span>
-                        </div>
-                        <div class="text-xs font-extrabold">${val.toFixed(2)} €</div>
-                    </div>
-                    <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                        <div class="h-full rounded-full" style="width: ${pct}%; background-color: ${color}"></div>
-                    </div>
-                </div>`;
-            });
-            statsContainer.innerHTML = html;
-        } else if (statsContainer) {
-            statsContainer.innerHTML = '<div class="text-center py-4 text-xs font-bold text-slate-400">Žiadne dáta pre zvolené obdobie</div>';
-        }
+        renderChartSummary('chart-stats-summary', aggregated, dataMode);
     }
 
     function updateBurnRateTab() {
-        if (document.getElementById('screen-burnrate').classList.contains('hidden')) return;
-
-        const chartType = document.getElementById('burn-chart-type').value;
-        const levelMode = document.getElementById('burn-level-mode').value;
+        const type = document.getElementById('burn-chart-type').value;
+        const level = document.getElementById('burn-level-mode').value;
         const dataMode = document.getElementById('burn-data-mode').value;
         const userFilter = document.getElementById('burn-user-filter').value;
 
         let filtered = getAnalyticsDataForPeriod();
         if (userFilter !== 'all') {
-            filtered = filtered.filter(d => (d.user || 'Lukáš') === userFilter);
+            filtered = filtered.filter(x => x.user === userFilter);
         }
 
-        const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const textColor = isDark ? '#94a3b8' : '#64748b';
+        const days = getDaysCountForPeriod(filtered);
 
-        let backgroundColors = [
-            '#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', 
-            '#06b6d4', '#f97316', '#64748b', '#84cc16', '#a855f7'
-        ];
-
-        const statsContainer = document.getElementById('burn-stats-breakdown');
-        const metricsContainer = document.getElementById('burn-metrics-cards');
-        if(statsContainer) statsContainer.innerHTML = '';
-        if(metricsContainer) metricsContainer.innerHTML = '';
-        
-        const aggregated = {};
-        const categoryBreakdown = {};
-        let totalAmount = 0;
-        
+        let totalExp = 0, totalInc = 0;
         filtered.forEach(item => {
-            let valid = false;
-            if (dataMode === 'expense' && item.type === 'expense') valid = true;
-            if (dataMode === 'income' && item.type === 'income') valid = true;
-            if (dataMode === 'balance') valid = true;
-            
-            if (!valid) return;
-            
-            let val = item.amount;
-            if (dataMode === 'balance' && item.type === 'expense') val = -val;
-            
+            if (item.type === 'expense') totalExp += item.amount;
+            if (item.type === 'income') totalInc += item.amount;
+        });
+
+        const burnRateDaily = totalExp / days;
+        const projectedMonthly = burnRateDaily * 30.5;
+
+        const metricsContainer = document.getElementById('burn-metrics-cards');
+        metricsContainer.innerHTML = `
+            <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 text-center">
+                <span class="text-[8px] font-black uppercase text-slate-400 block mb-1">Spolu Výdavky</span>
+                <span class="text-sm font-extrabold text-rose-500">${totalExp.toFixed(2)} €</span>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 text-center">
+                <span class="text-[8px] font-black uppercase text-slate-400 block mb-1">Denný Priemer</span>
+                <span class="text-sm font-extrabold text-amber-500">${burnRateDaily.toFixed(2)} €/d</span>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 text-center">
+                <span class="text-[8px] font-black uppercase text-slate-400 block mb-1">Odhad / Mesiac</span>
+                <span class="text-sm font-extrabold text-emerald-500">${projectedMonthly.toFixed(2)} €</span>
+            </div>
+        `;
+
+        const aggregated = {};
+        filtered.forEach(item => {
+            if (dataMode === 'expense' && item.type !== 'expense') return;
+            if (dataMode === 'income' && item.type !== 'income') return;
+
             let key = item.category;
-            if (levelMode === 'sub') {
-                key = item.category + (item.sub ? '|' + item.sub : '|');
+            if (level === 'sub') {
+                key = item.sub ? `${item.category} / ${item.sub}` : `${item.category} / Nezaradené`;
             }
-            
+
             if (!aggregated[key]) aggregated[key] = 0;
-            aggregated[key] += val;
 
-            if (!categoryBreakdown[item.category]) {
-                categoryBreakdown[item.category] = { total: 0, subs: {} };
+            if (dataMode === 'balance') {
+                aggregated[key] += (item.type === 'income' ? item.amount : -item.amount);
+            } else {
+                aggregated[key] += item.amount;
             }
-            categoryBreakdown[item.category].total += val;
-            
-            const subName = item.sub ? item.sub : 'Nezaradené';
-            if (!categoryBreakdown[item.category].subs[subName]) {
-                categoryBreakdown[item.category].subs[subName] = 0;
-            }
-            categoryBreakdown[item.category].subs[subName] += val;
-        });
-        
-        const labels = [];
-        const dataVals = [];
-        const sortedKeys = Object.keys(aggregated).sort((a,b) => Math.abs(aggregated[b]) - Math.abs(aggregated[a]));
-        
-        sortedKeys.forEach(k => {
-            labels.push(k.replace('|', ' - '));
-            dataVals.push(Math.abs(aggregated[k]));
-            totalAmount += Math.abs(aggregated[k]);
         });
 
-        const daysCount = getDaysCountForPeriod(filtered);
-        const dailyBurn = totalAmount / daysCount;
-        const monthlyProjected = dailyBurn * 30.5;
-
-        if (metricsContainer) {
-            metricsContainer.innerHTML = `
-                <div class="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-center items-center">
-                    <span class="text-[7.5px] font-black uppercase tracking-widest text-slate-400 mb-1 text-center">Denný priemer</span>
-                    <span class="text-sm font-extrabold text-amber-500">${dailyBurn.toFixed(2)} €</span>
-                </div>
-                <div class="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-center items-center">
-                    <span class="text-[7.5px] font-black uppercase tracking-widest text-slate-400 mb-1 text-center">Denný Burn</span>
-                    <span class="text-sm font-extrabold text-amber-500">${dailyBurn.toFixed(2)} €</span>
-                </div>
-                <div class="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-center items-center">
-                    <span class="text-[7.5px] font-black uppercase tracking-widest text-slate-400 mb-1 text-center">Mesačný Odhad</span>
-                    <span class="text-sm font-extrabold text-amber-500">${monthlyProjected.toFixed(2)} €</span>
-                </div>
-            `;
-        }
-        
         const ctx = document.getElementById('burnRateTabChart').getContext('2d');
         if (burnRateTabChartInstance) burnRateTabChartInstance.destroy();
-        
+
+        const labels = Object.keys(aggregated);
+        const dataValues = Object.values(aggregated);
+
+        const colors = [
+            '#f59e0b', '#ec4899', '#3b82f6', '#10b981', '#8b5cf6', 
+            '#f97316', '#14b8a6', '#6366f1', '#84cc16', '#06b6d4'
+        ];
+
         burnRateTabChartInstance = new Chart(ctx, {
-            type: chartType,
+            type: type,
             data: {
                 labels: labels,
                 datasets: [{
-                    data: dataVals,
-                    backgroundColor: backgroundColors,
-                    borderWidth: 0,
-                    borderRadius: chartType === 'bar' ? 4 : 0
+                    data: dataValues,
+                    backgroundColor: colors,
+                    borderWidth: 0
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: chartType === 'doughnut', position: 'bottom', labels: { color: textColor, font: { size: 10, family: "'Plus Jakarta Sans', sans-serif" } } },
-                    title: { display: false }
-                },
-                scales: chartType === 'bar' ? {
-                    y: { beginAtZero: true, ticks: { color: textColor, font: { size: 9 } }, grid: { color: isDark ? '#1e293b' : '#f1f5f9' } },
-                    x: { ticks: { color: textColor, font: { size: 9 } }, grid: { display: false } }
-                } : undefined,
-                onClick: (e, elements, chart) => {
-                    if (elements.length > 0) {
-                        const idx = elements[0].index;
-                        const label = chart.data.labels[idx];
-                        let cat = label;
-                        let sub = null;
-                        if (levelMode === 'sub' && label.includes(' - ')) {
-                            const parts = label.split(' - ');
-                            cat = parts[0];
-                            sub = parts[1] !== '' ? parts[1] : null;
-                        }
-                        filterFromStats(cat, sub);
+                    legend: {
+                        display: type === 'doughnut',
+                        position: 'bottom',
+                        labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } }
                     }
                 }
             }
         });
 
-        if (statsContainer && Object.keys(categoryBreakdown).length > 0) {
-            let html = `<div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm">
-                <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    <span>Kategória / Podkategória</span>
-                    <span>Suma / Podiel</span>
-                </div>
-                <div class="divide-y divide-slate-100 dark:divide-slate-700/50">`;
-
-            const sortedCats = Object.keys(categoryBreakdown).sort((a,b) => Math.abs(categoryBreakdown[b].total) - Math.abs(categoryBreakdown[a].total));
-
-            sortedCats.forEach((catName, idx) => {
-                const catData = categoryBreakdown[catName];
-                const catVal = Math.abs(catData.total);
-                const catPct = totalAmount > 0 ? Math.round((catVal / totalAmount) * 100) : 0;
-                const catDailyVal = daysCount > 0 ? (catVal / daysCount) : 0;
-                const catMonthlyProj = catDailyVal * 30.5;
-                const color = backgroundColors[idx % backgroundColors.length];
-
-                html += `
-                <div class="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                    <div onclick="filterFromStats('${catName}')" class="flex justify-between items-center cursor-pointer mb-1.5">
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 rounded-full" style="background-color: ${color}"></div>
-                            <span class="text-xs font-extrabold uppercase">${catName}</span>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span class="text-[10px] font-bold text-slate-400">${catPct}%</span>
-                            <span class="text-xs font-extrabold">${catVal.toFixed(2)} €</span>
-                        </div>
-                    </div>
-                    <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mb-2">
-                        <div class="h-full rounded-full" style="width: ${catPct}%; background-color: ${color}"></div>
-                    </div>
-                    <!-- PRIEMERNÉ DENNÉ ČERPANIE A PREDPOKLAD DO KONCA MESIACA PRE HLAVNÚ KATEGÓRIU -->
-                    <div class="flex justify-between items-center text-[9.5px] font-extrabold text-amber-500 bg-amber-500/5 dark:bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/10 mb-2">
-                        <span>Priemer: ${catDailyVal.toFixed(2)} €/deň</span>
-                        <span>Odhad: ${catMonthlyProj.toFixed(2)} €/mes.</span>
-                    </div>`;
-
-                const sortedSubs = Object.keys(catData.subs).sort((a,b) => Math.abs(catData.subs[b]) - Math.abs(catData.subs[a]));
-                if (sortedSubs.length > 0) {
-                    html += `<div class="pl-5 space-y-1 mt-2 border-l-2 border-slate-100 dark:border-slate-700 ml-1.5">`;
-                    sortedSubs.forEach((subName, sIdx) => {
-                        const subVal = Math.abs(catData.subs[subName]);
-                        const subPct = catVal > 0 ? Math.round((subVal / catVal) * 100) : 0;
-                        const isLast = sIdx === sortedSubs.length - 1;
-                        const prefixIcon = isLast ? '└── ' : '├── ';
-
-                        html += `
-                        <div onclick="filterFromStats('${catName}', '${subName}')" class="flex justify-between items-center text-[11px] py-1 cursor-pointer hover:opacity-80 transition-opacity">
-                            <span class="font-medium text-slate-500 dark:text-slate-400 font-mono text-[10px]">${prefixIcon}<span class="font-sans font-bold text-slate-700 dark:text-slate-300">${subName}</span></span>
-                            <div class="flex items-center gap-2">
-                                <span class="text-[9px] text-slate-400 font-medium">${subPct}% z kat.</span>
-                                <span class="font-bold text-xs">${subVal.toFixed(2)} €</span>
-                            </div>
-                        </div>`;
-                    });
-                    html += `</div>`;
-                }
-
-                html += `</div>`;
-            });
-
-            html += `</div></div>`;
-            statsContainer.innerHTML = html;
-        } else if (statsContainer) {
-            statsContainer.innerHTML = '<div class="text-center py-4 text-xs font-bold text-slate-400">Žiadne dáta pre zvolené obdobie</div>';
-        }
+        renderBurnRateBreakdown('burn-stats-breakdown', aggregated, days);
     }
 
-    const yearSelect = document.getElementById('filter-year');
-    if (yearSelect) {
-        const currentYear = new Date().getFullYear();
-        for (let i = currentYear - 2; i <= currentYear + 1; i++) {
+    function renderChartSummary(containerId, aggregated, dataMode) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const totalSum = Object.values(aggregated).reduce((a, b) => a + Math.abs(b), 0);
+        if (totalSum === 0) {
+            container.innerHTML = `<div class="text-center text-slate-400 font-extrabold text-xs uppercase py-4">Žiadne dáta pre zvolené kritériá</div>`;
+            return;
+        }
+
+        const sorted = Object.entries(aggregated).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+
+        container.innerHTML = sorted.map(([key, val]) => {
+            const pct = ((Math.abs(val) / totalSum) * 100).toFixed(1);
+            const parts = key.split(' / ');
+            const mainCat = parts[0];
+            const subCat = parts[1] || null;
+
+            return `
+                <div onclick="filterFromStats('${mainCat}', ${subCat ? `'${subCat}'` : 'null'})" class="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 cursor-pointer hover:border-emerald-500/50 transition-all flex justify-between items-center">
+                    <div>
+                        <div class="font-extrabold text-xs uppercase tracking-tight">${key}</div>
+                        <div class="w-24 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                            <div class="bg-emerald-500 h-full" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-extrabold text-xs">${val.toFixed(2)} €</div>
+                        <div class="text-[9px] font-black text-slate-400">${pct}%</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderBurnRateBreakdown(containerId, aggregated, days) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const totalSum = Object.values(aggregated).reduce((a, b) => a + Math.abs(b), 0);
+        if (totalSum === 0) {
+            container.innerHTML = `<div class="text-center text-slate-400 font-extrabold text-xs uppercase py-4">Žiadne dáta pre Burn Rate</div>`;
+            return;
+        }
+
+        const sorted = Object.entries(aggregated).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+
+        container.innerHTML = sorted.map(([key, val]) => {
+            const daily = Math.abs(val) / days;
+            const monthlyProj = daily * 30.5;
+            const parts = key.split(' / ');
+            const mainCat = parts[0];
+            const subCat = parts[1] || null;
+
+            return `
+                <div onclick="filterFromStats('${mainCat}', ${subCat ? `'${subCat}'` : 'null'})" class="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 cursor-pointer hover:border-amber-500/50 transition-all flex justify-between items-center">
+                    <div>
+                        <div class="font-extrabold text-xs uppercase tracking-tight">${key}</div>
+                        <div class="text-[9px] font-bold text-slate-400 mt-0.5">
+                            <span class="text-amber-500">${daily.toFixed(2)} €/d</span> • Odhad: ${monthlyProj.toFixed(2)} €/m
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-extrabold text-xs text-rose-500">${val.toFixed(2)} €</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // INICIALIZÁCIA APLIKÁCIE
+    window.addEventListener('DOMContentLoaded', () => {
+        const yearSelect = document.getElementById('filter-year');
+        const curYear = new Date().getFullYear();
+        for (let y = curYear; y >= curYear - 5; y--) {
             const opt = document.createElement('option');
-            opt.value = i;
-            opt.textContent = i;
-            if (i === currentYear) opt.selected = true;
+            opt.value = y;
+            opt.innerText = y;
             yearSelect.appendChild(opt);
         }
-    }
 
-    lucide.createIcons();
-    renderMonthChips();
-    renderChartMonthChips();
-    renderList();
-
+        renderMonthChips();
+        renderCatGrid();
+        renderList();
+        
+        // Stiahnutie transakcií aj kategórií pri starte
+        syncTransactions('pull');
+        syncCategories('pull');
+    });
 </script>
 </body>
 </html>
